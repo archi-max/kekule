@@ -4,9 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Kekule is a heterarchical swarm of agents aimed to self-organize to solve problems and explore frontier capabilities of models in swarm settings. It enables multiple Claude agents to dynamically form organizational patterns—from hierarchical to peer-to-peer—based on the task at hand.
+Kekule is a heterarchical swarm of agents aimed to self-organize to solve problems and explore frontier capabilities of models in swarm settings. Named after August Kekulé's famous ouroboros dream that led to discovering benzene's ring structure, the project explores how analogical reasoning and structured exploration can unlock breakthrough capabilities in agent swarms.
 
-**Tech Stack**: Python 3.11+, uv package manager, Claude Agent SDK
+**Built for**: Built with Opus 4.6: a Claude Code hackathon (Cerebral Valley & Anthropic)
+
+**Team**: Ansh Tulsyan & Jack Armitage
+
+**Tech Stack**: Python 3.11+, uv package manager, Claude Agent SDK (Opus 4.6)
 
 **Key Dependencies**:
 - `claude-agent-sdk` - Build autonomous agents with tools (Read, Write, Bash, WebSearch, etc.)
@@ -53,7 +57,12 @@ uv remove package-name     # Remove a dependency
 
 **Self-Organization**: Agents dynamically form collaboration structures without centralized control, enabling emergent problem-solving behaviors.
 
-**Frontier Exploration**: The project aims to discover and test the limits of multi-agent collaboration with frontier models.
+**Frontier Exploration**: The project aims to discover and test the limits of multi-agent collaboration with frontier models (Claude Opus 4.6).
+
+**Future Exploration** (concepts to explore as the project evolves):
+- Analogical reasoning via problem reformulation and lateral thinking prompts
+- Structured exploration strategies (inspired by Edison's methodology)
+- Emergent coordination patterns in heterarchical swarms
 
 ### Core Components (Planned)
 
@@ -138,3 +147,5 @@ Create a `.env` file based on `.env.example`:
 - Keep functions focused and composable
 - Use Pydantic for configuration and data validation
 - Design for agent autonomy and self-organization
+- Focus on what's implementable with Claude Agent SDK
+- Keep exploration concepts (analogical reasoning, noise injection) as future research directions
