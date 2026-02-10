@@ -1,0 +1,27 @@
+[project]
+name = "kekule"
+version = "0.1.0"
+description = "A hybrid swarm orchestrator for coordinating multiple Claude agents on complex software engineering tasks"
+readme = "README.md"
+authors = [
+    { name = "Ansh Tulsyan", email = "atulsyan850@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.48.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.8.0",
+    "mypy>=1.8.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"
