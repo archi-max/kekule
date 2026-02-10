@@ -23,8 +23,13 @@ cp .env.example .env
 
 3. Run the example:
 ```bash
-uv run python main.py
+uv run python -m kekule.main
 ```
+
+The example demonstrates:
+- Simple agent queries using Claude Agent SDK
+- Code analysis with file reading tools (Read, Glob, Grep)
+- Foundation for building heterarchical swarm patterns
 
 ## Development
 
@@ -55,9 +60,16 @@ uv run mypy src/
 
 ## Project Structure
 
-- `main.py` - Simple example using Claude API
+- `src/kekule/main.py` - Example agent using Claude Agent SDK
 - `src/kekule/` - Main package (orchestrator to be implemented)
 - `tests/` - Test suite
+
+## Built With
+
+- **[Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview)** - Autonomous agents with tools
+- **Python 3.11+** - Core language
+- **uv** - Fast Python package manager
+- **Pydantic** - Data validation and settings
 
 ## Roadmap
 

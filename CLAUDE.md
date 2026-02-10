@@ -6,7 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Kekule is a heterarchical swarm of agents aimed to self-organize to solve problems and explore frontier capabilities of models in swarm settings. It enables multiple Claude agents to dynamically form organizational patterns—from hierarchical to peer-to-peer—based on the task at hand.
 
-**Tech Stack**: Python 3.11+, uv package manager, Anthropic Claude API
+**Tech Stack**: Python 3.11+, uv package manager, Claude Agent SDK
+
+**Key Dependencies**:
+- `claude-agent-sdk` - Build autonomous agents with tools (Read, Write, Bash, WebSearch, etc.)
+- `pydantic` - Data validation and configuration
+- `pydantic-settings` - Settings management
 
 ## Development Commands
 
@@ -18,7 +23,7 @@ uv sync --extra dev        # Install with dev dependencies
 
 ### Running Code
 ```bash
-uv run python main.py      # Run the simple example
+uv run python -m kekule.main  # Run the agent SDK examples
 ```
 
 ### Testing & Quality
@@ -58,7 +63,8 @@ uv remove package-name     # Remove a dependency
    - Manages agent lifecycle and communication
 
 2. **Agents** (`src/kekule/agents/`)
-   - Base agent implementation using Claude API
+   - Base agent implementation using Claude Agent SDK
+   - Built-in tools: Read, Write, Edit, Bash, Glob, Grep, WebSearch, etc.
    - Dynamic role adaptation
    - Inter-agent communication protocols
 
@@ -86,9 +92,38 @@ uv remove package-name     # Remove a dependency
 ### Current Status
 
 - Basic project structure with uv
-- Simple Claude API example in `main.py`
-- Orchestrator and agent implementations: Not yet implemented
+- Example agents using Claude Agent SDK in `src/kekule/main.py`
+  - Simple query agent demonstrating basic usage
+  - Code analysis agent with file tools (Read, Glob, Grep)
+- Orchestrator and swarm coordination: Not yet implemented
 - SWE Bench integration: Placeholder only
+
+### Claude Agent SDK Usage
+
+The project uses the [Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview) which provides:
+
+**Available Tools**: `Read`, `Write`, `Edit`, `Bash`, `Glob`, `Grep`, `WebSearch`, `WebFetch`, and more
+
+**Permission Modes**:
+- `default` - Requires approval for each tool use
+- `acceptEdits` - Auto-approves file edits, prompts for other actions
+- `bypassPermissions` - Runs without prompts (for CI/CD)
+
+**Basic Pattern**:
+```python
+from claude_agent_sdk import query, ClaudeAgentOptions
+
+async for message in query(
+    prompt="Your task here",
+    options=ClaudeAgentOptions(
+        allowed_tools=["Read", "Edit", "Glob"],
+        permission_mode="acceptEdits",
+        system_prompt="Your system prompt"
+    )
+):
+    # Handle messages
+    pass
+```
 
 ## Environment Variables
 
