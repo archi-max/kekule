@@ -20,8 +20,10 @@ from claude_agent_sdk import (
     ClaudeAgentOptions,
     AssistantMessage,
     ResultMessage,
+    UserMessage,
     TextBlock,
     ToolUseBlock,
+    ToolResultBlock,
 )
 
 from .config import HarnessConfig
@@ -345,21 +347,48 @@ async def solve_swe_task(
     )
 
     prompt = build_swe_prompt(task, config)
+    trace_data.prompt = prompt
 
     logger.info(f"[{agent_id}] Starting solver for {task.instance_id}")
 
     try:
         async for message in query(prompt=prompt, options=options):
             if isinstance(message, AssistantMessage):
+                # Serialize content blocks for tracing
+                content_dicts = []
                 for block in message.content:
                     if isinstance(block, TextBlock):
-                        # Log a snippet for debugging
+                        content_dicts.append({"type": "text", "text": block.text})
                         if len(block.text) > 100:
                             logger.debug(
                                 f"[{agent_id}] text: {block.text[:100]}..."
                             )
                     elif isinstance(block, ToolUseBlock):
+                        content_dicts.append({
+                            "type": "tool_use",
+                            "id": block.id,
+                            "name": block.name,
+                            "input": block.input,
+                        })
                         logger.info(f"[{agent_id}] tool: {block.name}")
+
+                trace_data.messages.append({
+                    "type": "assistant",
+                    "model": message.model,
+                    "content": content_dicts,
+                })
+
+            elif isinstance(message, UserMessage):
+                # Capture tool results from user messages
+                if isinstance(message.content, list):
+                    for block in message.content:
+                        if isinstance(block, ToolResultBlock):
+                            trace_data.messages.append({
+                                "type": "tool_result",
+                                "tool_use_id": block.tool_use_id,
+                                "content": str(block.content)[:2000] if block.content else "",
+                                "is_error": block.is_error or False,
+                            })
 
             elif isinstance(message, ResultMessage):
                 trace_data.num_turns = message.num_turns
@@ -379,6 +408,7 @@ async def solve_swe_task(
     # Extract the patch
     patch = extract_patch(repo_dir)
     trace_data.patch_produced = bool(patch.strip())
+    trace_data.patch_content = patch
 
     elapsed = time.time() - start_time
     logger.info(

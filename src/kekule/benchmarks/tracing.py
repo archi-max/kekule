@@ -1,8 +1,8 @@
 """
 LangFuse tracing integration for the SWE-bench harness.
 
-Creates traces/spans for each experiment iteration, problem, and agent.
-Logs tool usage, costs, and results.
+Creates traces/spans/generations for each experiment iteration, problem, and agent.
+Captures the full agent conversation including tool uses and results.
 
 All credentials are configured via environment variables:
   LANGFUSE_SECRET_KEY, LANGFUSE_PUBLIC_KEY, LANGFUSE_BASE_URL
@@ -26,11 +26,14 @@ class AgentTraceData:
     iteration: int
     model: str
     tool_calls: list[dict] = field(default_factory=list)
+    messages: list[dict] = field(default_factory=list)
+    prompt: str = ""
     chatoverflow_questions: int = 0
     chatoverflow_answers_received: int = 0
     total_cost_usd: float = 0.0
     num_turns: int = 0
     patch_produced: bool = False
+    patch_content: str = ""
     error: str | None = None
 
 
@@ -107,25 +110,82 @@ class TracingManager:
         return span
 
     def end_agent_span(self, span, trace_data: AgentTraceData):
-        """End an agent span with results."""
+        """End an agent span with full conversation trace."""
         if not self._enabled:
             return
 
+        # Set the prompt as input on the span
         span.update(
+            input={"prompt": trace_data.prompt},
             output={
                 "patch_produced": trace_data.patch_produced,
+                "patch": trace_data.patch_content[:5000] if trace_data.patch_content else "",
                 "num_turns": trace_data.num_turns,
                 "total_cost_usd": trace_data.total_cost_usd,
-                "chatoverflow_questions": trace_data.chatoverflow_questions,
-                "chatoverflow_answers_received": trace_data.chatoverflow_answers_received,
                 "tool_call_count": len(trace_data.tool_calls),
                 "error": trace_data.error,
             },
-            metadata={
-                "tool_calls": trace_data.tool_calls[-20:],
-            },
         )
+
+        # Create generations and tool spans from the captured conversation
+        self._create_conversation_traces(span, trace_data)
+
         span.end()
+
+    def _create_conversation_traces(self, parent_span, trace_data: AgentTraceData):
+        """Create Langfuse generations and spans from the conversation messages."""
+        turn = 0
+
+        for msg in trace_data.messages:
+            msg_type = msg.get("type")
+
+            if msg_type == "assistant":
+                turn += 1
+                text_parts = []
+                tool_uses = []
+
+                for block in msg.get("content", []):
+                    if block.get("type") == "text":
+                        text_parts.append(block["text"])
+                    elif block.get("type") == "tool_use":
+                        tool_uses.append(block)
+
+                assistant_text = "\n".join(text_parts) if text_parts else None
+
+                # Create a generation for this assistant turn
+                gen = parent_span.start_generation(
+                    name=f"turn-{turn}",
+                    model=msg.get("model", trace_data.model),
+                    input={"turn": turn},
+                    output=assistant_text,
+                    metadata={
+                        "tool_uses": [
+                            {"name": t["name"], "input_preview": _truncate_dict(t.get("input", {}), 500)}
+                            for t in tool_uses
+                        ],
+                    } if tool_uses else None,
+                )
+                gen.end()
+
+                # Create child spans for each tool use
+                for tool in tool_uses:
+                    tool_span = parent_span.start_span(
+                        name=f"tool:{tool['name']}",
+                        input=_truncate_dict(tool.get("input", {}), 2000),
+                        metadata={"turn": turn, "tool_use_id": tool.get("id", "")},
+                    )
+                    tool_span.end()
+
+            elif msg_type == "tool_result":
+                # Create event for tool results
+                parent_span.create_event(
+                    name="tool_result",
+                    input={
+                        "tool_use_id": msg.get("tool_use_id", ""),
+                        "is_error": msg.get("is_error", False),
+                        "content_preview": _truncate(str(msg.get("content", "")), 1000),
+                    },
+                )
 
     def log_evaluation_result(
         self,
@@ -181,12 +241,33 @@ class TracingManager:
             self.langfuse.shutdown()
 
 
+def _truncate(s: str, max_len: int) -> str:
+    """Truncate a string to max_len characters."""
+    if len(s) <= max_len:
+        return s
+    return s[:max_len] + f"... ({len(s)} chars total)"
+
+
+def _truncate_dict(d: dict, max_len: int) -> dict:
+    """Truncate string values in a dict for display."""
+    result = {}
+    for k, v in d.items():
+        if isinstance(v, str) and len(v) > max_len:
+            result[k] = v[:max_len] + f"... ({len(v)} chars)"
+        else:
+            result[k] = v
+    return result
+
+
 class _NoOpSpan:
     """No-op span used when tracing is disabled."""
 
     id = "noop"
 
     def start_span(self, **kwargs):
+        return _NoOpSpan()
+
+    def start_generation(self, **kwargs):
         return _NoOpSpan()
 
     def update(self, **kwargs):
