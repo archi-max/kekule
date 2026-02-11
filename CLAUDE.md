@@ -123,6 +123,18 @@ The harness (`src/kekule/benchmarks/harness.py`) orchestrates the full experimen
 6. **Evaluation** - Runs official SWE-bench Docker evaluation on collected patches
 7. **Reporting** - Writes predictions JSONL, per-agent results, best-of-N selection
 
+### Building Custom Solvers
+
+See `docs/custom-solvers.md` for the full guide on building your own solver agents.
+
+The solver is a pluggable `solve_swe_task()` async function. To create a custom solver:
+1. Copy `solver_agent.py` as a starting point
+2. Customize the system prompt, tools, or multi-pass strategy
+3. Change the import in `harness.py` to use your solver
+4. Run the harness -- everything else (cloning, eval, reporting) is handled for you
+
+Patterns documented: different prompts, multi-pass solving, swarm with shared knowledge, tool-restricted agents, model comparison, and A/B testing via solver dispatch.
+
 ### Claude Agent SDK Usage
 
 **Two usage patterns** are demonstrated:

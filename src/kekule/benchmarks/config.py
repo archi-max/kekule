@@ -34,9 +34,9 @@ class HarnessConfig:
     langfuse_base_url: str = ""
 
     # -- Paths ----------------------------------------------------------------
-    base_dir: Path = field(default_factory=lambda: Path(__file__).parent)
-    results_dir: Path = field(default_factory=lambda: Path(__file__).parent / "results")
-    workspaces_dir: Path = field(default_factory=lambda: Path(__file__).parent / "workspaces")
+    base_dir: Path = field(default_factory=lambda: Path.cwd())
+    results_dir: Path = field(default_factory=lambda: Path.cwd() / "results")
+    workspaces_dir: Path = field(default_factory=lambda: Path.cwd() / "workspaces")
     repo_cache_dir: Path = field(
         default_factory=lambda: Path("/tmp/swe-bench-repo-cache")
     )

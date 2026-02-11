@@ -9,9 +9,12 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "claude-agent-sdk>=0.1.0",
+    "aiofiles>=24.1.0",
+    "aiohttp>=3.9.0",
     "httpx>=0.25.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +29,9 @@ dev = [
     "pytest-cov>=4.1.0",
     "ruff>=0.8.0",
     "mypy>=1.8.0",
+]
+all = [
+    "kekule[benchmarks,dev]",
 ]
 
 [project.scripts]
