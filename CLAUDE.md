@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Kekule is a heterarchical swarm of agents aimed to self-organize to solve problems and explore frontier capabilities of models in swarm settings. Named after August Kekulé's famous ouroboros dream that led to discovering benzene's ring structure, the project explores how analogical reasoning and structured exploration can unlock breakthrough capabilities in agent swarms.
+Kekule is a heterarchical swarm of agents aimed to self-organize to solve problems and explore frontier capabilities of models in swarm settings. Named after August Kekule's famous ouroboros dream that led to discovering benzene's ring structure, the project explores how analogical reasoning and structured exploration can unlock breakthrough capabilities in agent swarms.
 
 **Built for**: Built with Opus 4.6: a Claude Code hackathon (Cerebral Valley & Anthropic)
 
@@ -14,20 +14,34 @@ Kekule is a heterarchical swarm of agents aimed to self-organize to solve proble
 
 **Key Dependencies**:
 - `claude-agent-sdk` - Build autonomous agents with tools (Read, Write, Bash, WebSearch, etc.)
-- `pydantic` - Data validation and configuration
-- `pydantic-settings` - Settings management
+- `httpx` - HTTP client for API interactions
+- `pydantic` / `pydantic-settings` - Data validation and configuration
+- `datasets` (optional) - HuggingFace datasets for SWE-bench
+- `swebench` (optional) - Official SWE-bench evaluation harness
+- `langfuse` (optional) - Tracing and observability
 
 ## Development Commands
 
 ### Environment Setup
 ```bash
-uv sync                    # Install dependencies
-uv sync --extra dev        # Install with dev dependencies
+uv sync                        # Install core dependencies
+uv sync --extra dev            # Install with dev dependencies
+uv sync --extra benchmarks     # Install with SWE-bench + LangFuse
+uv sync --extra dev --extra benchmarks  # Install everything
 ```
 
 ### Running Code
 ```bash
-uv run python -m kekule.main  # Run the agent SDK examples
+# Run the agent SDK examples
+uv run python -m kekule.main
+
+# Run the SWE-bench harness
+uv run kekule-bench --help
+uv run kekule-bench --dry-run
+uv run kekule-bench --problems 1 --agents-per-problem 1 --iterations 1 --skip-eval
+
+# Run the standalone solver on a question file
+uv run python -m kekule.solver.main solve input/question.json
 ```
 
 ### Testing & Quality
@@ -51,93 +65,112 @@ uv remove package-name     # Remove a dependency
 
 ## Architecture
 
+### Project Structure
+
+```
+src/kekule/
+  __init__.py           # Package root
+  main.py               # Demo agents (simple query, code analysis)
+  solver/               # Expert Solver Agent
+    __init__.py
+    agent.py            # Core agent using ClaudeSDKClient
+    schemas.py          # Question/SolverResponse dataclasses
+    utils.py            # File I/O, status tracking, MCP config loading
+    api_client.py       # ChatOverflow API client (optional skill)
+  benchmarks/           # SWE-bench Evaluation Harness
+    __init__.py
+    harness.py          # Main orchestrator (entry point)
+    solver_agent.py     # SWE-bench-specific solver using claude_agent_sdk.query()
+    config.py           # HarnessConfig dataclass
+    task_selector.py    # SWE-bench Lite dataset loader + task picker
+    evaluator.py        # Predictions writer + Docker-based evaluation
+    tracing.py          # LangFuse integration + agent hooks
+```
+
 ### Core Concepts
 
-**Heterarchical Organization**: Unlike traditional hierarchical systems with fixed roles, Kekule allows agents to self-organize into different patterns based on task requirements. Agents can act as coordinators, workers, or peers depending on the context.
+**Heterarchical Organization**: Unlike traditional hierarchical systems with fixed roles, Kekule allows agents to self-organize into different patterns based on task requirements.
 
-**Self-Organization**: Agents dynamically form collaboration structures without centralized control, enabling emergent problem-solving behaviors.
+**Two Agent Patterns**:
+1. **Expert Solver** (`solver/`) - Stateful agent using `ClaudeSDKClient` for solving individual questions with MCP tools
+2. **SWE-bench Solver** (`benchmarks/solver_agent.py`) - Stateless agent using `query()` for solving GitHub issues in isolated repo workspaces
 
-**Frontier Exploration**: The project aims to discover and test the limits of multi-agent collaboration with frontier models (Claude Opus 4.6).
+**SWE-bench Harness** (`benchmarks/`) - Full experiment orchestrator that runs N agents x M problems x K iterations in parallel, collects git patches, and evaluates them against the official SWE-bench Docker harness.
 
-**Future Exploration** (concepts to explore as the project evolves):
-- Analogical reasoning via problem reformulation and lateral thinking prompts
-- Structured exploration strategies (inspired by Edison's methodology)
-- Emergent coordination patterns in heterarchical swarms
+### How the Solver Agent Works
 
-### Core Components (Planned)
+The solver agent (`src/kekule/solver/agent.py`) uses the `ClaudeSDKClient` class from the Claude Agent SDK:
 
-1. **Orchestrator** (`src/kekule/orchestrator/`)
-   - Facilitates agent self-organization
-   - Supports multiple organizational patterns
-   - Manages agent lifecycle and communication
+1. Receives a `Question` (title, body, context, tags, previous attempts)
+2. Builds a system prompt (claude_code preset + expert solver instructions)
+3. Configures MCP servers (Context7 for docs, ChatOverflow optionally)
+4. Opens a `ClaudeSDKClient` session and sends the question as a prompt
+5. Streams the response, tracking tool usage and code snippets
+6. Parses the final response to extract confidence and answer/attempt classification
+7. Returns a `SolverResponse` saved to disk
 
-2. **Agents** (`src/kekule/agents/`)
-   - Base agent implementation using Claude Agent SDK
-   - Built-in tools: Read, Write, Edit, Bash, Glob, Grep, WebSearch, etc.
-   - Dynamic role adaptation
-   - Inter-agent communication protocols
+### How the SWE-bench Harness Works
 
-3. **Patterns** (`src/kekule/patterns/`)
-   - Hierarchical: Coordinator delegates to workers
-   - P2P: Agents collaborate directly as peers
-   - Hybrid: Dynamic switching between patterns
-   - Emergent: Allow new patterns to form naturally
+See `docs/benchmarks.md` for detailed flowcharts and architecture diagrams.
 
-4. **Benchmarks** (`src/kekule/benchmarks/`)
-   - SWE Bench integration (placeholder)
-   - Evaluation harness
-   - Performance metrics
+The harness (`src/kekule/benchmarks/harness.py`) orchestrates the full experiment:
 
-5. **Observability** (`src/kekule/observability/`)
-   - Structured logging (placeholder)
-   - Tracing and metrics (placeholder)
-   - Swarm behavior analysis
-
-6. **State Management** (`src/kekule/state/`)
-   - Persistence layer (placeholder)
-   - Checkpointing and recovery
-   - Shared knowledge base
-
-### Current Status
-
-- Basic project structure with uv
-- Example agents using Claude Agent SDK in `src/kekule/main.py`
-  - Simple query agent demonstrating basic usage
-  - Code analysis agent with file tools (Read, Glob, Grep)
-- Orchestrator and swarm coordination: Not yet implemented
-- SWE Bench integration: Placeholder only
+1. **Task Selection** - Loads SWE-bench Lite from HuggingFace, picks tasks
+2. **Repo Caching** - Clones repos once into a shared cache (shallow clone + fetch)
+3. **Workspace Setup** - Copies cached repos into per-agent isolated workspaces
+4. **Agent Execution** - Spawns Claude Agent SDK agents in parallel with concurrency limits
+5. **Patch Collection** - Extracts `git diff` from each agent's workspace
+6. **Evaluation** - Runs official SWE-bench Docker evaluation on collected patches
+7. **Reporting** - Writes predictions JSONL, per-agent results, best-of-N selection
 
 ### Claude Agent SDK Usage
 
-The project uses the [Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview) which provides:
+**Two usage patterns** are demonstrated:
 
-**Available Tools**: `Read`, `Write`, `Edit`, `Bash`, `Glob`, `Grep`, `WebSearch`, `WebFetch`, and more
-
-**Permission Modes**:
-- `default` - Requires approval for each tool use
-- `acceptEdits` - Auto-approves file edits, prompts for other actions
-- `bypassPermissions` - Runs without prompts (for CI/CD)
-
-**Basic Pattern**:
+**1. `query()` - Stateless streaming (used in benchmarks)**
 ```python
 from claude_agent_sdk import query, ClaudeAgentOptions
 
 async for message in query(
     prompt="Your task here",
     options=ClaudeAgentOptions(
-        allowed_tools=["Read", "Edit", "Glob"],
-        permission_mode="acceptEdits",
-        system_prompt="Your system prompt"
+        allowed_tools=["Read", "Edit", "Bash"],
+        permission_mode="bypassPermissions",
+        system_prompt={"type": "preset", "preset": "claude_code", "append": "..."}
     )
 ):
-    # Handle messages
+    # Handle AssistantMessage, ResultMessage
     pass
 ```
+
+**2. `ClaudeSDKClient` - Stateful session (used in solver)**
+```python
+from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
+
+async with ClaudeSDKClient(options=options) as client:
+    await client.query(prompt)
+    async for message in client.receive_response():
+        # Handle messages
+        pass
+```
+
+**Permission Modes**:
+- `default` - Requires approval for each tool use
+- `acceptEdits` - Auto-approves file edits, prompts for other actions
+- `bypassPermissions` - Runs without prompts (for CI/CD and benchmarks)
 
 ## Environment Variables
 
 Create a `.env` file based on `.env.example`:
-- `ANTHROPIC_API_KEY`: Your Anthropic API key (required)
+
+| Variable | Required | Description |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key |
+| `CHATOVERFLOW_API_URL` | No | ChatOverflow forum URL (default: `https://www.chatoverflow.dev`) |
+| `CHATOVERFLOW_API_KEY` | No | ChatOverflow API key for forum interactions |
+| `LANGFUSE_SECRET_KEY` | No | LangFuse secret key (enables tracing) |
+| `LANGFUSE_PUBLIC_KEY` | No | LangFuse public key |
+| `LANGFUSE_BASE_URL` | No | LangFuse instance URL |
 
 ## Code Style
 
@@ -147,5 +180,3 @@ Create a `.env` file based on `.env.example`:
 - Keep functions focused and composable
 - Use Pydantic for configuration and data validation
 - Design for agent autonomy and self-organization
-- Focus on what's implementable with Claude Agent SDK
-- Keep exploration concepts (analogical reasoning, noise injection) as future research directions
