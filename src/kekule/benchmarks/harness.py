@@ -30,7 +30,7 @@ from .evaluator import (
     write_per_agent_predictions,
     write_predictions,
 )
-from .solver_agent import solve_swe_task, _clone_reference_repo
+from .solver_agent import _clone_reference_repo
 from .task_selector import SWETask, select_tasks
 from .tracing import AgentTraceData, TracingManager
 
@@ -40,6 +40,27 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+
+def load_solver(name: str):
+    """Dynamically import solve_swe_task from solvers/<name>.py."""
+    import importlib
+
+    try:
+        module = importlib.import_module(f".solvers.{name}", package="kekule.benchmarks")
+    except ModuleNotFoundError:
+        raise SystemExit(
+            f"Solver '{name}' not found. "
+            f"Create src/kekule/benchmarks/solvers/{name}.py with a solve_swe_task() function."
+        )
+
+    if not hasattr(module, "solve_swe_task"):
+        raise SystemExit(
+            f"Solver '{name}' has no solve_swe_task() function. "
+            f"See docs/custom-solvers.md for the required function signature."
+        )
+
+    return module.solve_swe_task
 
 
 _FUN_NAMES = [
@@ -110,6 +131,7 @@ async def run_iteration(
     tasks: list[SWETask],
     config: HarnessConfig,
     tracing: TracingManager,
+    solver_fn=None,
 ) -> list[dict]:
     """
     Run one iteration of the experiment.
@@ -194,7 +216,7 @@ async def run_iteration(
             agent_metadata.append((span, trace_data))
 
             agent_coros.append(
-                solve_swe_task(
+                solver_fn(
                     task=task,
                     agent_id=agent_id,
                     workspace_dir=workspace_dir,
@@ -258,9 +280,13 @@ async def run_experiment(config: HarnessConfig, skip_eval: bool = False):
     """Run the full experiment across all iterations."""
     config.ensure_dirs()
 
+    # Load solver
+    solver_fn = load_solver(config.solver)
+
     logger.info(
         f"Starting SWE-bench experiment:\n"
         f"  Experiment:        {config.experiment_name or '(unnamed)'}\n"
+        f"  Solver:            {config.solver}\n"
         f"  Model:             {config.model}\n"
         f"  Problems:          {config.num_problems}\n"
         f"  Agents/problem:    {config.agents_per_problem}\n"
@@ -284,7 +310,7 @@ async def run_experiment(config: HarnessConfig, skip_eval: bool = False):
     all_iteration_results = []
     start = config.start_iteration
     for iteration in range(start, start + config.num_iterations):
-        results = await run_iteration(iteration, tasks, config, tracing)
+        results = await run_iteration(iteration, tasks, config, tracing, solver_fn)
         all_iteration_results.append(results)
 
         # Write predictions for this iteration
@@ -378,6 +404,12 @@ def parse_args() -> argparse.Namespace:
         help="Label for this experiment run (shown in Langfuse traces)",
     )
     parser.add_argument(
+        "--solver",
+        type=str,
+        default=None,
+        help="Solver module name from solvers/ package (default: 'default')",
+    )
+    parser.add_argument(
         "--model",
         type=str,
         default=None,
@@ -462,6 +494,7 @@ def main():
     if args.dry_run:
         print("DRY RUN -- Configuration:")
         print(f"  Experiment:        {config.experiment_name or '(unnamed)'}")
+        print(f"  Solver:            {config.solver}")
         print(f"  Model:             {config.model}")
         print(f"  Problems:          {config.num_problems}")
         print(f"  Agents/problem:    {config.agents_per_problem}")

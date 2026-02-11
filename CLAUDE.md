@@ -40,6 +40,9 @@ uv run kekule-bench --help
 uv run kekule-bench --dry-run
 uv run kekule-bench --problems 1 --agents-per-problem 1 --iterations 1 --skip-eval
 
+# Run with a custom solver and experiment name
+uv run kekule-bench --solver my_solver --experiment-name "my-experiment" --problems 2 --skip-eval
+
 # Run the standalone solver on a question file
 uv run python -m kekule.solver.main solve input/question.json
 ```
@@ -80,11 +83,13 @@ src/kekule/
   benchmarks/           # SWE-bench Evaluation Harness
     __init__.py
     harness.py          # Main orchestrator (entry point)
-    solver_agent.py     # SWE-bench-specific solver using claude_agent_sdk.query()
+    solver_agent.py     # Default solver implementation using claude_agent_sdk.query()
     config.py           # HarnessConfig dataclass
     task_selector.py    # SWE-bench Lite dataset loader + task picker
     evaluator.py        # Predictions writer + Docker-based evaluation
     tracing.py          # LangFuse tracing + conversation capture
+    solvers/            # Pluggable solver modules (--solver flag)
+      default.py        # Re-exports solver_agent.solve_swe_task
 ```
 
 ### Core Concepts

@@ -32,7 +32,7 @@ The key function the harness calls for each agent is `solve_swe_task()`. This is
 
 ### Step 1: Create your solver file
 
-Create a new file at `src/kekule/benchmarks/my_solver.py`:
+Create a new file at `src/kekule/benchmarks/solvers/my_solver.py`:
 
 ```python
 """
@@ -154,48 +154,49 @@ async def solve_swe_task(
     }
 ```
 
-### Step 2: Wire it into the harness
+### Step 2: Run it
 
-In `src/kekule/benchmarks/harness.py`, change the import:
-
-```python
-# Change this:
-from .solver_agent import solve_swe_task, _clone_reference_repo
-
-# To this:
-from .solver_agent import _clone_reference_repo
-from .my_solver import solve_swe_task
-```
-
-That's it. Run the harness as before:
+Use the `--solver` flag to select your solver by filename (without `.py`):
 
 ```bash
-uv run kekule-bench --problems 1 --agents-per-problem 1 --iterations 1 --skip-eval
+uv run kekule-bench --solver my_solver --experiment-name "my-experiment" --problems 1 --agents-per-problem 1 --iterations 1 --skip-eval
 ```
+
+The harness dynamically imports `solve_swe_task` from `solvers/my_solver.py`. No need to edit `harness.py`.
+
+Available solvers are any `.py` file in `src/kekule/benchmarks/solvers/` that exports a `solve_swe_task()` function. The default solver is `solvers/default.py`.
 
 ### Step 3: Compare solvers (A/B testing)
 
-To run multiple solver strategies in the same experiment, create a dispatcher:
+**Option A:** Run separate experiments and compare results in Langfuse:
+
+```bash
+uv run kekule-bench --solver default --experiment-name "baseline" --problems 5 --skip-eval
+uv run kekule-bench --solver my_solver --experiment-name "my-approach" --problems 5 --skip-eval
+```
+
+**Option B:** Create a dispatcher solver that routes agents to different strategies:
 
 ```python
-# src/kekule/benchmarks/solver_dispatch.py
+# src/kekule/benchmarks/solvers/ab_test.py
 
-from .solver_agent import solve_swe_task as default_solver
+from ..solver_agent import solve_swe_task as default_solver
 from .my_solver import solve_swe_task as my_solver
 
 
 async def solve_swe_task(task, agent_id, workspace_dir, ref_repo_dir, config, trace_data, agent_api_key=""):
     """Dispatch to different solvers based on agent number."""
-    # Extract agent number from ID: "agent-django__django-16379-0-iter0"
     parts = agent_id.rsplit("-", 2)
     agent_num = int(parts[-2]) if len(parts) >= 2 else 0
 
     if agent_num % 2 == 0:
-        # Even agents use default solver
         return await default_solver(task, agent_id, workspace_dir, ref_repo_dir, config, trace_data, agent_api_key)
     else:
-        # Odd agents use custom solver
         return await my_solver(task, agent_id, workspace_dir, ref_repo_dir, config, trace_data, agent_api_key)
+```
+
+```bash
+uv run kekule-bench --solver ab_test --experiment-name "ab-test-v1" --agents-per-problem 4 --problems 5
 ```
 
 ## Solver Design Patterns
@@ -336,30 +337,27 @@ async def solve_swe_task(task, agent_id, ..., config, trace_data, **kwargs):
 ```
 src/kekule/benchmarks/
   |
-  |-- harness.py          MODIFY: Change the solve_swe_task import to use your solver
-  |                        The rest (cloning, evaluation, reporting) stays the same.
+  |-- harness.py          DO NOT MODIFY: Loads solver via --solver flag automatically.
   |
-  |-- solver_agent.py     REFERENCE: The default solver. Copy this as a starting point.
-  |                        Key functions:
-  |                          solve_swe_task()   -- Main entry point called by harness
+  |-- solver_agent.py     REFERENCE: The default solver implementation.
+  |                        Key functions you can reuse:
+  |                          solve_swe_task()   -- Main entry point (the contract)
   |                          setup_workspace()  -- Copy repo to agent workspace
   |                          extract_patch()    -- Get git diff from workspace
   |                          build_swe_prompt() -- Build the prompt from task
   |
+  |-- solvers/             YOUR SOLVERS GO HERE: Drop .py files with solve_swe_task()
+  |   |-- default.py       Re-exports solver_agent.solve_swe_task
+  |   |-- my_solver.py     CREATE: Your custom solver
+  |   |-- ab_test.py       CREATE: Optional dispatcher for A/B testing
+  |
   |-- config.py            EXTEND: Add custom config fields for your solver
-  |                        e.g., strategy name, custom model per agent, etc.
   |
   |-- task_selector.py     EXTEND: Add custom task filtering logic
-  |                        e.g., filter by difficulty, repo, or language
   |
   |-- evaluator.py         RARELY MODIFY: Handles JSONL writing + Docker eval
-  |                        Only change if you need custom evaluation logic.
   |
   |-- tracing.py           EXTEND: Add custom hooks to track solver-specific metrics
-  |                        e.g., how many files the agent read, specific patterns used
-  |
-  |-- my_solver.py         CREATE: Your custom solver (see examples above)
-  |-- solver_dispatch.py   CREATE: Optional dispatcher for A/B testing
 ```
 
 ## Swarm Experiment Ideas
@@ -369,16 +367,16 @@ Here are experiment configurations you can run to explore swarm behavior:
 ### Experiment 1: Scale Test
 ```bash
 # How does solve rate scale with number of agents?
-kekule-bench --problems 3 --agents-per-problem 1 --iterations 3 --skip-eval
-kekule-bench --problems 3 --agents-per-problem 3 --iterations 3 --skip-eval
-kekule-bench --problems 3 --agents-per-problem 5 --iterations 3 --skip-eval
-# Compare best-of-N pass rates across runs
+kekule-bench --experiment-name "scale-1" --problems 3 --agents-per-problem 1 --iterations 3 --skip-eval
+kekule-bench --experiment-name "scale-3" --problems 3 --agents-per-problem 3 --iterations 3 --skip-eval
+kekule-bench --experiment-name "scale-5" --problems 3 --agents-per-problem 5 --iterations 3 --skip-eval
+# Compare best-of-N pass rates in Langfuse
 ```
 
 ### Experiment 2: Strategy Diversity
 ```bash
-# Use solver_dispatch.py with 3 different strategies
-kekule-bench --problems 5 --agents-per-problem 3 --iterations 1
+# Use an A/B dispatch solver with 3 different strategies
+kekule-bench --solver ab_test --experiment-name "strategy-diversity" --problems 5 --agents-per-problem 3 --iterations 1
 # agent0: test-first, agent1: grep-first, agent2: docs-first
 # Does strategy diversity improve best-of-N?
 ```
@@ -386,16 +384,16 @@ kekule-bench --problems 5 --agents-per-problem 3 --iterations 1
 ### Experiment 3: Iterative Refinement
 ```bash
 # Run 5 iterations, each building on previous knowledge
-kekule-bench --problems 3 --agents-per-problem 1 --iterations 5
+kekule-bench --solver shared_knowledge --experiment-name "iterative" --problems 3 --agents-per-problem 1 --iterations 5
 # Use shared knowledge pattern so later iterations learn from earlier ones
 ```
 
 ### Experiment 4: ChatOverflow Collaboration
 ```bash
 # Do agents solve more when they can share Q&A?
-kekule-bench --problems 5 --agents-per-problem 3 --enable-chatoverflow
+kekule-bench --experiment-name "with-forum" --problems 5 --agents-per-problem 3 --enable-chatoverflow
 # vs baseline without:
-kekule-bench --problems 5 --agents-per-problem 3
+kekule-bench --experiment-name "no-forum" --problems 5 --agents-per-problem 3
 ```
 
 ## The `solve_swe_task` Contract
