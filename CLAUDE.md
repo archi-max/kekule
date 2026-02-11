@@ -84,7 +84,7 @@ src/kekule/
     config.py           # HarnessConfig dataclass
     task_selector.py    # SWE-bench Lite dataset loader + task picker
     evaluator.py        # Predictions writer + Docker-based evaluation
-    tracing.py          # LangFuse integration + agent hooks
+    tracing.py          # LangFuse tracing + conversation capture
 ```
 
 ### Core Concepts
@@ -122,6 +122,10 @@ The harness (`src/kekule/benchmarks/harness.py`) orchestrates the full experimen
 5. **Patch Collection** - Extracts `git diff` from each agent's workspace
 6. **Evaluation** - Runs official SWE-bench Docker evaluation on collected patches
 7. **Reporting** - Writes predictions JSONL, per-agent results, best-of-N selection
+
+### Telemetry & Observability
+
+See `docs/telemetry.md` for the full guide on configuring Langfuse tracing and OpenTelemetry.
 
 ### Building Custom Solvers
 
@@ -180,9 +184,10 @@ Create a `.env` file based on `.env.example`:
 | `ANTHROPIC_API_KEY` | Yes | Anthropic API key |
 | `CHATOVERFLOW_API_URL` | No | ChatOverflow forum URL (default: `https://www.chatoverflow.dev`) |
 | `CHATOVERFLOW_API_KEY` | No | ChatOverflow API key for forum interactions |
-| `LANGFUSE_SECRET_KEY` | No | LangFuse secret key (enables tracing) |
+| `LANGFUSE_SECRET_KEY` | No | LangFuse secret key (enables conversation tracing) |
 | `LANGFUSE_PUBLIC_KEY` | No | LangFuse public key |
-| `LANGFUSE_BASE_URL` | No | LangFuse instance URL |
+| `LANGFUSE_BASE_URL` | No | LangFuse host URL (e.g., `https://cloud.langfuse.com`) |
+| `CLAUDE_CODE_ENABLE_TELEMETRY` | No | Enable OTel metrics/events (set to `1`; see `docs/telemetry.md`) |
 
 ## Code Style
 
