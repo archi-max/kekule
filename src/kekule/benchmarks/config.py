@@ -17,6 +17,7 @@ class HarnessConfig:
     model: str = "claude-opus-4-5"
 
     # -- Experiment parameters ------------------------------------------------
+    experiment_name: str = ""
     agents_per_problem: int = 3
     num_problems: int = 3
     num_iterations: int = 3
@@ -73,6 +74,8 @@ class HarnessConfig:
     def from_args(cls, args) -> "HarnessConfig":
         """Create config from argparse namespace."""
         config = cls()
+        if hasattr(args, "experiment_name") and args.experiment_name:
+            config.experiment_name = args.experiment_name
         if hasattr(args, "model") and args.model:
             config.model = args.model
         if hasattr(args, "problems") and args.problems:

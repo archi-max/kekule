@@ -260,6 +260,7 @@ async def run_experiment(config: HarnessConfig, skip_eval: bool = False):
 
     logger.info(
         f"Starting SWE-bench experiment:\n"
+        f"  Experiment:        {config.experiment_name or '(unnamed)'}\n"
         f"  Model:             {config.model}\n"
         f"  Problems:          {config.num_problems}\n"
         f"  Agents/problem:    {config.agents_per_problem}\n"
@@ -371,6 +372,12 @@ def parse_args() -> argparse.Namespace:
         description="SWE-bench validation loop with Claude Agent SDK",
     )
     parser.add_argument(
+        "--experiment-name",
+        type=str,
+        default=None,
+        help="Label for this experiment run (shown in Langfuse traces)",
+    )
+    parser.add_argument(
         "--model",
         type=str,
         default=None,
@@ -454,6 +461,7 @@ def main():
 
     if args.dry_run:
         print("DRY RUN -- Configuration:")
+        print(f"  Experiment:        {config.experiment_name or '(unnamed)'}")
         print(f"  Model:             {config.model}")
         print(f"  Problems:          {config.num_problems}")
         print(f"  Agents/problem:    {config.agents_per_problem}")

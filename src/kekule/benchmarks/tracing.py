@@ -72,16 +72,20 @@ class TracingManager:
         if not self._enabled:
             return _NoOpSpan()
 
+        prefix = self.config.experiment_name or "swe-bench"
+        name = f"{prefix}-iteration-{iteration}"
+
         span = self.langfuse.start_span(
-            name=f"swe-bench-iteration-{iteration}",
+            name=name,
             metadata={
+                "experiment_name": self.config.experiment_name or None,
                 "model": self.config.model,
                 "agents_per_problem": self.config.agents_per_problem,
                 "num_problems": self.config.num_problems,
                 "iteration": iteration,
             },
         )
-        logger.info(f"Created trace for iteration {iteration}: {span.id}")
+        logger.info(f"Created trace for iteration {iteration}: {name} ({span.id})")
         return span
 
     def create_agent_span(
