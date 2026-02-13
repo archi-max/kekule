@@ -303,6 +303,7 @@ async def run_experiment(config: HarnessConfig, skip_eval: bool = False):
         task_ids=config.task_ids or None,
         num_problems=config.num_problems,
         repos=config.repos or None,
+        task_file=config.task_file or None,
     )
     logger.info(f"Tasks: {[t.instance_id for t in tasks]}")
 
@@ -446,6 +447,12 @@ def parse_args() -> argparse.Namespace:
         help="Select all tasks from these repos (e.g., psf/requests pytest-dev/pytest)",
     )
     parser.add_argument(
+        "--task-file",
+        type=str,
+        default=None,
+        help="Path to a JSON file with a 'task_ids' array (e.g., task_sets/perturbation_v1.json)",
+    )
+    parser.add_argument(
         "--chatoverflow-url",
         type=str,
         default=None,
@@ -501,6 +508,7 @@ def main():
         print(f"  Iterations:        {config.num_iterations}")
         print(f"  Max turns:         {config.max_agent_turns}")
         print(f"  Task IDs:          {config.task_ids or 'auto-select'}")
+        print(f"  Task file:         {config.task_file or '(none)'}")
         print(f"  ChatOverflow:      {'enabled' if config.enable_chatoverflow else 'disabled'}")
         print(f"  ChatOverflow URL:  {config.chatoverflow_api_url}")
         print(f"  LangFuse:          {'enabled' if config.langfuse_enabled else 'disabled'}")

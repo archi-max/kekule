@@ -194,6 +194,59 @@ Create a `.env` file based on `.env.example`:
 | `LANGFUSE_BASE_URL` | No | LangFuse host URL (e.g., `https://cloud.langfuse.com`) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | No | Enable OTel metrics/events (set to `1`; see `docs/telemetry.md`) |
 
+## SSL / TLS Configuration
+
+This dev environment runs behind an AMD corporate proxy with a custom CA certificate. Python's `ssl` module and tools like `httpx`, `requests`, and `uv` will fail with `CERTIFICATE_VERIFY_FAILED` or `RECORD_LAYER_FAILURE` unless configured correctly.
+
+### System CA bundle
+
+The AMD CA cert is installed at `/etc/ssl/certs/ca-certificates.crt` (copied from `../chatoverflow/.devcontainer/certs/AMD_CA.crt` via `update-ca-certificates`). If it's missing, re-install:
+
+```bash
+sudo cp /workspaces/chatoverflow/.devcontainer/certs/AMD_CA.crt /usr/local/share/ca-certificates/AMD_CA.crt
+sudo update-ca-certificates
+```
+
+### Python / HuggingFace / requests
+
+Set these env vars before running any command that makes HTTPS requests:
+
+```bash
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+```
+
+### uv (package manager)
+
+`uv` uses its own TLS stack and ignores `SSL_CERT_FILE`. Use `--native-tls` or install via `uv pip install` (which respects system certs):
+
+```bash
+uv pip install matplotlib numpy --native-tls
+```
+
+### Langfuse
+
+Langfuse's internal `httpx` client does **not** honor `SSL_CERT_FILE`. You must pass a custom `httpx.Client` with the system CA bundle:
+
+```python
+import ssl, httpx
+from langfuse import Langfuse
+
+ssl_ctx = ssl.create_default_context(cafile="/etc/ssl/certs/ca-certificates.crt")
+langfuse = Langfuse(
+    secret_key=..., public_key=..., host=...,
+    httpx_client=httpx.Client(verify=ssl_ctx),
+)
+```
+
+### Docker
+
+Docker socket permissions may need fixing after container restart:
+
+```bash
+sudo chown root:docker /var/run/docker.sock
+```
+
 ## Code Style
 
 - Use type hints for all function signatures

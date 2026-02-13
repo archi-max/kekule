@@ -48,6 +48,7 @@ class HarnessConfig:
     # Set to empty list to use task_selector auto-pick.
     task_ids: list[str] = field(default_factory=list)
     repos: list[str] = field(default_factory=list)
+    task_file: str = ""
 
     # -- Claude settings (loaded from ~/.claude/settings.json) ----------------
     claude_settings_path: Path = field(
@@ -91,6 +92,8 @@ class HarnessConfig:
             config.task_ids = args.task_ids
         if hasattr(args, "repos") and args.repos:
             config.repos = args.repos
+        if hasattr(args, "task_file") and args.task_file:
+            config.task_file = args.task_file
         if hasattr(args, "chatoverflow_url") and args.chatoverflow_url:
             config.chatoverflow_api_url = args.chatoverflow_url
         if hasattr(args, "enable_chatoverflow") and args.enable_chatoverflow:

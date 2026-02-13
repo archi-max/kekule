@@ -5,9 +5,11 @@ Loads the dataset from HuggingFace and picks medium/hard problems
 that benefit from collaborative solving (multi-file, complex reasoning).
 """
 
+import json
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 # Disable XET for HuggingFace to avoid issues
 os.environ["HF_HUB_DISABLE_XET"] = "1"
@@ -69,10 +71,28 @@ SMALL_REPOS = [
 ]
 
 
+def load_task_file(path: str | Path) -> list[str]:
+    """Load task IDs from a task set JSON file.
+
+    Reads the 'task_ids' array from a JSON file like task_sets/perturbation_v1.json.
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Task file not found: {path}")
+    with open(path) as f:
+        data = json.load(f)
+    task_ids = data.get("task_ids", [])
+    if not task_ids:
+        raise ValueError(f"No task_ids found in {path}")
+    logger.info(f"Loaded {len(task_ids)} task IDs from {path}")
+    return task_ids
+
+
 def select_tasks(
     task_ids: list[str] | None = None,
     num_problems: int = 3,
     repos: list[str] | None = None,
+    task_file: str | Path | None = None,
 ) -> list[SWETask]:
     """
     Select SWE-bench tasks for the experiment.
@@ -81,10 +101,14 @@ def select_tasks(
         task_ids: Explicit list of instance IDs. If None, uses DEFAULT_TASK_IDS.
         num_problems: Number of problems to select (only used for auto-selection).
         repos: If provided, select all tasks from these repos (up to num_problems).
+        task_file: Path to a JSON file containing a 'task_ids' array. Overrides task_ids.
 
     Returns:
         List of SWETask objects.
     """
+    if task_file:
+        task_ids = load_task_file(task_file)
+
     all_instances = load_swebench_lite()
     id_to_instance = {inst["instance_id"]: inst for inst in all_instances}
 
