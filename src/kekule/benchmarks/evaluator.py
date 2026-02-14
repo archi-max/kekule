@@ -12,6 +12,8 @@ import json
 import logging
 from pathlib import Path
 
+from .patch_hygiene import sanitize_patch
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +40,33 @@ def write_predictions(
 
     with open(predictions_file, "w") as f:
         for result in results:
-            if not result.get("model_patch"):
+            raw_patch = result.get("model_patch", "")
+            sanitized = sanitize_patch(
+                raw_patch,
+                fail_closed_on_special=True,
+            )
+
+            patch = raw_patch
+            if sanitized.rejected:
+                logger.warning(
+                    "Rejecting patch for %s (agent=%s): %s",
+                    result["instance_id"],
+                    result.get("agent_id"),
+                    sanitized.reason,
+                )
+                patch = ""
+            else:
+                patch = sanitized.patch
+                if sanitized.dropped_files:
+                    logger.warning(
+                        "Dropped %d files from patch for %s (agent=%s): %s",
+                        len(sanitized.dropped_files),
+                        result["instance_id"],
+                        result.get("agent_id"),
+                        ", ".join(sanitized.dropped_files[:5]),
+                    )
+
+            if not patch:
                 logger.warning(
                     f"No patch for {result['instance_id']} "
                     f"(agent={result.get('agent_id')}), writing empty patch"
@@ -49,7 +77,7 @@ def write_predictions(
                 "model_name_or_path": result.get(
                     "model_name_or_path", "kekule"
                 ),
-                "model_patch": result.get("model_patch", ""),
+                "model_patch": patch,
             }
             f.write(json.dumps(prediction) + "\n")
 

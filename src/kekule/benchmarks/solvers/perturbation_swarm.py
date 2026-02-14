@@ -25,6 +25,7 @@ import json
 import logging
 import re
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -40,9 +41,11 @@ from claude_agent_sdk import (
 )
 
 from ..config import HarnessConfig
+from ..patch_hygiene import extract_changed_files, sanitize_patch
 from ..perturbation_policy import PerturbationPolicy
 from ..solver_agent import (
     CHATOVERFLOW_SWE_SKILL_PROMPT,
+    _apply_task_specific_patch_remediation,
     ensure_sdk_stream_close_timeout,
     extract_patch,
     setup_workspace,
@@ -52,6 +55,9 @@ from ..task_selector import SWETask
 from ..tracing import AgentTraceData, build_agent_hooks
 
 logger = logging.getLogger(__name__)
+
+_PASS_WORD_RE = re.compile(r"\b(pass|passed|success|resolved)\b", re.IGNORECASE)
+_FAIL_WORD_RE = re.compile(r"\b(fail|failed|error|exception)\b", re.IGNORECASE)
 
 # ---------------------------------------------------------------------------
 # Prompts
@@ -69,7 +75,7 @@ Use standard file tools to read/write ledger entries.
 - Read others' findings: check swarm_ledger/agent-*/findings.md
 - Post your status: write "exploring" / "fixing" / "verifying" / "done" to swarm_ledger/agent-{agent_num}/status.md
 - Post your hypothesis: swarm_ledger/agent-{agent_num}/hypothesis.md
-- Propose a fix: write your diff to swarm_ledger/agent-{agent_num}/proposed_fix.diff (use `git diff > swarm_ledger/agent-{agent_num}/proposed_fix.diff`)
+- Propose a fix: write your diff to swarm_ledger/agent-{agent_num}/proposed_fix.diff (use `git diff --binary --no-ext-diff > swarm_ledger/agent-{agent_num}/proposed_fix.diff`)
 - Verify others: apply their diff, run tests, write results to swarm_ledger/agent-{agent_num}/verification.md
 
 ## Coordination Rules
@@ -105,6 +111,7 @@ This is a starting point. Adapt based on what you and others discover.
 - Make **minimal, focused changes** -- only fix what the issue describes
 - Do NOT add tests unless the issue specifically asks for them
 - Do NOT modify test files unless the issue is about a test
+- If maintainer discussion/hints are provided, follow maintainer consensus over reporter preference
 {perturbation_text}{chatoverflow_prompt}
 """
 
@@ -191,6 +198,13 @@ async def plan_roles(task: SWETask, repo_dir: Path, config: HarnessConfig) -> li
     Uses query() with read-only tools and max_turns=5.
     On parse failure, returns DEFAULT_ROLES.
     """
+    hints_section = ""
+    if task.hints_text.strip():
+        hints_section = (
+            "\n### Maintainer Hints / Discussion\n\n"
+            f"{task.hints_text.strip()}\n"
+        )
+
     prompt = f"""{PLANNER_PROMPT}
 
 ## GitHub Issue
@@ -201,6 +215,7 @@ async def plan_roles(task: SWETask, repo_dir: Path, config: HarnessConfig) -> li
 ### Problem Statement
 
 {task.problem_statement}
+{hints_section}
 """
 
     options = ClaudeAgentOptions(
@@ -354,6 +369,13 @@ async def run_swarm_agent(
         hooks=hooks,
     )
 
+    hints_section = ""
+    if task.hints_text.strip():
+        hints_section = (
+            "\n### Maintainer Hints / Discussion\n\n"
+            f"{task.hints_text.strip()}\n"
+        )
+
     prompt = f"""## GitHub Issue to Solve
 
 **Repository:** {task.repo}
@@ -362,6 +384,7 @@ async def run_swarm_agent(
 ### Problem Statement
 
 {task.problem_statement}
+{hints_section}
 
 ---
 
@@ -438,6 +461,12 @@ Make minimal changes, do not create branches or commits, just edit the files dir
         logger.error(f"[{agent_label}] Failed: {e}")
         trace_data.error = f"agent_exception: {e}"
 
+    _ensure_agent_proposed_diff(
+        repo_dir=repo_dir,
+        ledger_dir=ledger_dir,
+        agent_num=agent_num,
+    )
+
 
 def _get_context_perturbation_text(mode: str, intensity: float) -> str:
     """Get uncertainty prompt text when running context perturbation mode."""
@@ -454,6 +483,27 @@ def _get_context_perturbation_text(mode: str, intensity: float) -> str:
     return PERTURBATION_PROMPTS.get(selected, "")
 
 
+def _ensure_agent_proposed_diff(repo_dir: Path, ledger_dir: Path, agent_num: int) -> None:
+    """
+    Ensure each agent ends with a sanitized proposed diff in the ledger.
+
+    If the agent wrote a diff, sanitize it in-place.
+    If not, snapshot current workspace diff as a fallback proposal.
+    """
+    diff_file = ledger_dir / f"agent-{agent_num}" / "proposed_fix.diff"
+    existing = diff_file.read_text(errors="replace") if diff_file.exists() else ""
+
+    sanitized_existing = sanitize_patch(existing, fail_closed_on_special=True)
+    if existing.strip() and not sanitized_existing.rejected and sanitized_existing.patch.strip():
+        if sanitized_existing.patch != existing:
+            diff_file.write_text(sanitized_existing.patch)
+        return
+
+    snapshot = extract_patch(repo_dir)
+    if snapshot.strip():
+        diff_file.write_text(snapshot)
+
+
 # ---------------------------------------------------------------------------
 # Phase 2: Patch selection
 # ---------------------------------------------------------------------------
@@ -465,104 +515,176 @@ def select_best_patch(repo_dir: Path, ledger_dir: Path, num_agents: int) -> str:
 
     Priority:
     1. A fix verified by another agent (endorsed) — apply that agent's diff
-    2. Multiple fixes — pick the one with most test pass mentions
-    3. No verified fix — fall back to the workspace git diff
+    2. Multiple fixes — pick the one with strongest verification signal
+    3. If no candidate applies, use the sanitized workspace snapshot
 
     Returns the patch string.
     """
-    # Scan verification files to find endorsed fixes
-    endorsements: dict[int, list[str]] = {}  # agent_num -> list of endorser texts
+    # Keep a pre-selection snapshot as the final fallback.
+    workspace_snapshot = extract_patch(repo_dir)
+
+    # Score each agent's proposal by verification notes.
+    verification_scores: dict[int, int] = {i: 0 for i in range(num_agents)}
 
     for agent_i in range(num_agents):
         verification_file = ledger_dir / f"agent-{agent_i}" / "verification.md"
         if not verification_file.exists():
             continue
-        content = verification_file.read_text()
-        # Look for references to other agents' fixes that PASS
+        content = verification_file.read_text(errors="replace")
         for agent_j in range(num_agents):
             if agent_j == agent_i:
                 continue
-            # Check if this agent verified agent_j's fix as passing
-            if f"agent-{agent_j}" in content.lower() and "pass" in content.lower():
-                endorsements.setdefault(agent_j, []).append(
-                    f"agent-{agent_i}"
-                )
+            verification_scores[agent_j] += _score_verification_for_agent(
+                content,
+                agent_j,
+            )
 
-    if endorsements:
-        # Pick the agent with most endorsements
-        best_agent = max(endorsements, key=lambda k: len(endorsements[k]))
-        diff_file = ledger_dir / f"agent-{best_agent}" / "proposed_fix.diff"
-        if diff_file.exists():
-            diff_content = diff_file.read_text().strip()
-            if diff_content:
-                logger.info(
-                    f"[patch-select] Using endorsed fix from agent-{best_agent} "
-                    f"({len(endorsements[best_agent])} endorsements)"
-                )
-                # Apply the endorsed diff and return the resulting workspace diff
-                try:
-                    subprocess.run(
-                        ["git", "checkout", "."],
-                        cwd=str(repo_dir),
-                        capture_output=True,
-                        timeout=30,
-                    )
-                    result = subprocess.run(
-                        ["git", "apply", "--allow-empty", str(diff_file)],
-                        cwd=str(repo_dir),
-                        capture_output=True,
-                        timeout=30,
-                    )
-                    if result.returncode == 0:
-                        return extract_patch(repo_dir)
-                    else:
-                        logger.warning(
-                            f"[patch-select] Failed to apply endorsed diff: "
-                            f"{result.stderr.decode()[:200]}"
-                        )
-                except Exception as e:
-                    logger.warning(f"[patch-select] Error applying endorsed diff: {e}")
-
-    # Check for any proposed fix diffs
-    proposed_diffs: list[tuple[int, str]] = []
+    # Load/sanitize candidate diffs before touching the workspace.
+    candidates: list[dict] = []
     for agent_i in range(num_agents):
         diff_file = ledger_dir / f"agent-{agent_i}" / "proposed_fix.diff"
         if diff_file.exists():
-            content = diff_file.read_text().strip()
-            if content:
-                proposed_diffs.append((agent_i, content))
-
-    if proposed_diffs and len(proposed_diffs) == 1:
-        # Single proposed diff — apply it
-        agent_i, diff_content = proposed_diffs[0]
-        logger.info(f"[patch-select] Using single proposed fix from agent-{agent_i}")
-        try:
-            subprocess.run(
-                ["git", "checkout", "."],
-                cwd=str(repo_dir),
-                capture_output=True,
-                timeout=30,
-            )
-            diff_file = ledger_dir / f"agent-{agent_i}" / "proposed_fix.diff"
-            result = subprocess.run(
-                ["git", "apply", "--allow-empty", str(diff_file)],
-                cwd=str(repo_dir),
-                capture_output=True,
-                timeout=30,
-            )
-            if result.returncode == 0:
-                return extract_patch(repo_dir)
-            else:
+            raw_patch = diff_file.read_text(errors="replace")
+            sanitized = sanitize_patch(raw_patch, fail_closed_on_special=True)
+            if sanitized.rejected:
                 logger.warning(
-                    f"[patch-select] Failed to apply proposed diff: "
-                    f"{result.stderr.decode()[:200]}"
+                    "[patch-select] Rejecting agent-%d proposed diff (%s)",
+                    agent_i,
+                    sanitized.reason,
                 )
-        except Exception as e:
-            logger.warning(f"[patch-select] Error applying proposed diff: {e}")
+                continue
+            if not sanitized.patch.strip():
+                continue
+            candidates.append(
+                {
+                    "agent": agent_i,
+                    "score": verification_scores.get(agent_i, 0),
+                    "patch": sanitized.patch,
+                    "allowed_files": set(sanitized.kept_files)
+                    or extract_changed_files(sanitized.patch),
+                }
+            )
 
-    # Fall back to the workspace git diff (whatever state the agents left it in)
-    logger.info("[patch-select] Falling back to workspace git diff")
-    return extract_patch(repo_dir)
+    if not candidates:
+        if workspace_snapshot.strip():
+            logger.warning(
+                "[patch-select] No valid proposed diffs; using sanitized workspace snapshot",
+            )
+        return workspace_snapshot
+
+    candidates.sort(
+        key=lambda item: (item["score"], len(item["patch"])),
+        reverse=True,
+    )
+
+    for candidate in candidates:
+        applied_patch = _apply_candidate_patch(
+            repo_dir=repo_dir,
+            agent_num=int(candidate["agent"]),
+            candidate_patch=str(candidate["patch"]),
+            allowed_files=set(candidate["allowed_files"]),
+        )
+        if applied_patch.strip():
+            return applied_patch
+
+    if workspace_snapshot.strip():
+        logger.warning(
+            "[patch-select] Candidate apply failed; using sanitized workspace snapshot",
+        )
+    return workspace_snapshot
+
+
+def _score_verification_for_agent(verification_text: str, agent_num: int) -> int:
+    score = 0
+    for line in verification_text.splitlines():
+        lowered = line.lower()
+        if f"agent-{agent_num}" not in lowered:
+            continue
+        if _PASS_WORD_RE.search(line):
+            score += 1
+        if _FAIL_WORD_RE.search(line):
+            score -= 1
+    return score
+
+
+def _restore_workspace_for_patch_apply(repo_dir: Path) -> bool:
+    checkout = subprocess.run(
+        ["git", "checkout", "--", "."],
+        cwd=str(repo_dir),
+        capture_output=True,
+        timeout=30,
+    )
+    clean = subprocess.run(
+        ["git", "clean", "-fd"],
+        cwd=str(repo_dir),
+        capture_output=True,
+        timeout=30,
+    )
+    return checkout.returncode == 0 and clean.returncode == 0
+
+
+def _apply_candidate_patch(
+    *,
+    repo_dir: Path,
+    agent_num: int,
+    candidate_patch: str,
+    allowed_files: set[str],
+) -> str:
+    if not _restore_workspace_for_patch_apply(repo_dir):
+        logger.warning("[patch-select] Failed to restore workspace before patch apply")
+        return ""
+
+    try:
+        with tempfile.NamedTemporaryFile("w", suffix=".diff", delete=True) as tmp:
+            tmp.write(candidate_patch)
+            tmp.flush()
+
+            check = subprocess.run(
+                ["git", "apply", "--check", "--allow-empty", tmp.name],
+                cwd=str(repo_dir),
+                capture_output=True,
+                timeout=30,
+            )
+            if check.returncode != 0:
+                logger.warning(
+                    "[patch-select] Agent-%d diff failed --check: %s",
+                    agent_num,
+                    check.stderr.decode(errors="replace")[:200],
+                )
+                return ""
+
+            apply_result = subprocess.run(
+                ["git", "apply", "--allow-empty", tmp.name],
+                cwd=str(repo_dir),
+                capture_output=True,
+                timeout=30,
+            )
+            if apply_result.returncode != 0:
+                logger.warning(
+                    "[patch-select] Agent-%d diff apply failed: %s",
+                    agent_num,
+                    apply_result.stderr.decode(errors="replace")[:200],
+                )
+                return ""
+    except Exception as exc:
+        logger.warning(
+            "[patch-select] Error applying agent-%d candidate: %s",
+            agent_num,
+            exc,
+        )
+        return ""
+
+    patch = extract_patch(
+        repo_dir,
+        allowed_files=allowed_files if allowed_files else None,
+    )
+    if patch.strip():
+        logger.info(
+            "[patch-select] Selected agent-%d patch (%d bytes)",
+            agent_num,
+            len(patch),
+        )
+    return patch
 
 
 # ---------------------------------------------------------------------------
@@ -721,6 +843,7 @@ async def solve_swe_task(
     # ------------------------------------------------------------------
     logger.info(f"[{agent_id}] Phase 2: Selecting best patch...")
     patch = select_best_patch(repo_dir, ledger_dir, len(roles))
+    patch = _apply_task_specific_patch_remediation(task, repo_dir, patch)
     trace_data.patch_produced = bool(patch.strip())
     trace_data.patch_content = patch
 

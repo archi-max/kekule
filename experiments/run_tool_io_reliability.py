@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from dotenv import load_dotenv  # noqa: E402
 from kekule.benchmarks.config import HarnessConfig  # noqa: E402
 from kekule.benchmarks.harness import run_experiment  # noqa: E402
+from kekule.benchmarks.patch_hygiene import sanitize_patch  # noqa: E402
 from kekule.benchmarks.evaluator import (  # noqa: E402
     print_evaluation_summary,
     run_swebench_evaluation,
@@ -110,6 +111,48 @@ def _aggregate_condition_runs(runs: list[dict]) -> dict:
     }
 
 
+def _enforce_patch_integrity(raw: list[dict], run_name: str) -> list[dict]:
+    """
+    Sanitize patches in-place and fail fast if any row is unevaluable.
+    """
+    problems: list[str] = []
+    sanitized_rows: list[dict] = []
+
+    for row in raw:
+        row_copy = dict(row)
+        patch = row_copy.get("model_patch", "")
+        if not patch.strip():
+            problems.append(f"{row_copy.get('instance_id', 'unknown')}: empty_patch")
+            row_copy["model_patch"] = ""
+            sanitized_rows.append(row_copy)
+            continue
+
+        sanitized = sanitize_patch(
+            patch,
+            fail_closed_on_special=True,
+        )
+        if sanitized.rejected:
+            problems.append(
+                f"{row_copy.get('instance_id', 'unknown')}: rejected({sanitized.reason})"
+            )
+            row_copy["model_patch"] = ""
+        else:
+            row_copy["model_patch"] = sanitized.patch
+            if not sanitized.patch.strip():
+                problems.append(
+                    f"{row_copy.get('instance_id', 'unknown')}: empty_after_sanitize"
+                )
+        sanitized_rows.append(row_copy)
+
+    if problems:
+        details = "; ".join(problems)
+        raise RuntimeError(
+            f"{run_name} produced unevaluable rows ({len(problems)}): {details}"
+        )
+
+    return sanitized_rows
+
+
 async def run_single_condition_seed(condition: dict, seed: int) -> dict:
     run_name = f"{condition['name']}-seed{seed}"
     logger.info(
@@ -156,7 +199,8 @@ async def run_single_condition_seed(condition: dict, seed: int) -> dict:
     elapsed = time.time() - start
 
     raw_path = results_dir / "iteration_0" / "raw_results.json"
-    raw = _read_json(raw_path, [])
+    raw = _enforce_patch_integrity(_read_json(raw_path, []), run_name)
+    raw_path.write_text(json.dumps(raw, indent=2))
 
     eval_total = 0
     eval_passed = 0
