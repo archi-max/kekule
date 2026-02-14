@@ -1,7 +1,8 @@
 # Tool I/O Reliability Experiment Report
 
-Generated: 2026-02-14 01:30:40 UTC  
-Run completed: 12/12 condition-seed cells
+Generated: 2026-02-14 12:50:08 UTC  
+Run completed: 12/12 condition-seed cells  
+Evaluation completed: 12/12 condition-seed cells
 
 ## Setup
 
@@ -10,36 +11,37 @@ Run completed: 12/12 condition-seed cells
 - Tasks per run: `3` (`django__django-16379`, `django__django-14915`, `pytest-dev__pytest-5413`)
 - Solver: `perturbation_swarm`
 - Model: `claude-opus-4-5`
-- Evaluation mode: `skip_eval=True` (no SWE-bench pass/fail scoring in this run)
+- Evaluation mode: SWE-bench full pass (`run_evaluation`) over saved predictions
 
 ## Condition Summary
 
-| Condition | p (configured) | Patches | Patch rate | Avg cost (USD/run) | Avg turns/run | Avg wall time/run (s) | Observed fire rate | Fired / Eligible |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| toolio-baseline | 0.00 | 8/9 | 0.889 | 9.558 | 375.3 | 222.1 | 0.000 | 0 / 0 |
-| toolio-low | 0.05 | 8/9 | 0.889 | 9.585 | 368.3 | 256.0 | 0.007 | 1 / 136 |
-| toolio-medium | 0.10 | 7/9 | 0.778 | 9.244 | 370.0 | 227.3 | 0.020 | 2 / 98 |
-| toolio-high | 0.20 | 8/9 | 0.889 | 10.372 | 397.7 | 246.6 | 0.028 | 3 / 107 |
+| Condition | p (configured) | Patches | Patch rate | Eval pass / eval total | Resolve rate | Avg cost (USD/run) | Avg turns/run | Avg wall time/run (s) | Observed fire rate | Fired / Eligible |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| toolio-baseline | 0.00 | 8/9 | 0.889 | 4 / 7 | 0.571 | 9.558 | 375.3 | 187.0 | 0.000 | 0 / 0 |
+| toolio-low | 0.05 | 8/9 | 0.889 | 5 / 8 | 0.625 | 9.585 | 368.3 | 205.9 | 0.007 | 1 / 136 |
+| toolio-medium | 0.10 | 7/9 | 0.778 | 4 / 7 | 0.571 | 9.244 | 370.0 | 195.5 | 0.020 | 2 / 98 |
+| toolio-high | 0.20 | 8/9 | 0.889 | 3 / 6 | 0.500 | 10.372 | 397.7 | 209.4 | 0.028 | 3 / 107 |
 
-## Per-Task Patch Rate
+## Per-Task Resolve Rate (Evaluated Rows Only)
 
 | Task | Baseline | Low | Medium | High |
 |---|---:|---:|---:|---:|
-| django__django-14915 | 3/3 | 2/3 | 2/3 | 2/3 |
-| django__django-16379 | 2/3 | 3/3 | 2/3 | 3/3 |
-| pytest-dev__pytest-5413 | 3/3 | 3/3 | 3/3 | 3/3 |
+| django__django-14915 | 3/3 | 2/2 | 2/2 | 1/1 |
+| django__django-16379 | 1/1 | 3/3 | 2/2 | 2/2 |
+| pytest-dev__pytest-5413 | 0/3 | 0/3 | 0/3 | 0/3 |
 
 ## Key Findings
 
-1. End-to-end matrix execution completed successfully (`12/12`), with Langfuse enabled for all cells.
-2. No agent-level hard failures were recorded (`error_rows = 0`).
-3. Patch production stayed high overall (31/36), with the main dip in `toolio-medium` (7/9).
-4. Runtime and cost rose modestly at higher perturbation (`toolio-high` had highest avg cost and turns).
-5. Observed perturbation fire rates were much lower than configured intensities:
+1. End-to-end matrix execution and evaluation completed (`12/12` each), with solve-rate backfilled from stored predictions.
+2. Overall solve performance on evaluated rows was `16/28 = 57.1%`.
+3. By condition, resolve rate was: low `0.625` > baseline `0.571` = medium `0.571` > high `0.500`.
+4. Patch production stayed high overall (31/36), with the main dip in `toolio-medium` (7/9).
+5. Runtime and cost rose at higher perturbation (`toolio-high` highest avg cost and turns).
+6. Observed perturbation fire rates were much lower than configured intensities:
    - low: observed `0.007` vs configured `0.05`
    - medium: observed `0.020` vs configured `0.10`
    - high: observed `0.028` vs configured `0.20`
-6. Since SWE-bench evaluation was skipped, this run supports reliability/behavioral analysis (cost, turns, patch production, perturbation telemetry), but not definitive solve-rate conclusions.
+7. Evaluation coverage was partial (`28/36`) because some predictions were empty and some failed to apply in SWE-bench due patch contamination (reversed patch + Django docs symlink/binary hunks).
 
 ## Notable Events
 
@@ -49,5 +51,6 @@ Run completed: 12/12 condition-seed cells
 
 - Aggregates: `experiments/tool-io-reliability/aggregated_results.json`
 - Per-run rows: `experiments/tool-io-reliability/raw_runs.json`
+- Eval rows: `experiments/tool-io-reliability/eval_results.json`
 - Compact table: `experiments/tool-io-reliability/summary.md`
 - Per-cell raw outputs: `experiments/tool-io-reliability/results/*/iteration_0/raw_results.json`

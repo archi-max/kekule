@@ -58,3 +58,9 @@ output/
 status/
 input/*.json
 !/input/.gitkeep
+
+# SWE-bench eval artifacts (toolio matrix runs)
+logs/run_evaluation/eval-toolio-*/
+kekule-swarm-claude-opus-4-5.eval-toolio-*.json
+logs/build_images/base/
+logs/build_images/instances/sweb.eval.x86_64.*__latest/

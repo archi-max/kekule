@@ -13,8 +13,8 @@
     "patches_produced": 3,
     "perturbation_eligible": 0,
     "perturbation_fired": 0,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 3,
+    "eval_passed": 2,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
@@ -95,8 +95,8 @@
     "patches_produced": 2,
     "perturbation_eligible": 0,
     "perturbation_fired": 0,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 2,
+    "eval_passed": 1,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
@@ -177,8 +177,8 @@
     "patches_produced": 3,
     "perturbation_eligible": 0,
     "perturbation_fired": 0,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 2,
+    "eval_passed": 1,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
@@ -260,8 +260,8 @@
     "patches_produced": 2,
     "perturbation_eligible": 29,
     "perturbation_fired": 0,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 2,
+    "eval_passed": 1,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
@@ -342,8 +342,8 @@
     "patches_produced": 3,
     "perturbation_eligible": 69,
     "perturbation_fired": 0,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 3,
+    "eval_passed": 2,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
@@ -424,8 +424,8 @@
     "patches_produced": 3,
     "perturbation_eligible": 38,
     "perturbation_fired": 1,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 3,
+    "eval_passed": 2,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
@@ -506,8 +506,8 @@
     "patches_produced": 3,
     "perturbation_eligible": 40,
     "perturbation_fired": 0,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 3,
+    "eval_passed": 2,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
@@ -589,7 +589,7 @@
     "patches_produced": 1,
     "perturbation_eligible": 15,
     "perturbation_fired": 1,
-    "eval_total": 0,
+    "eval_total": 1,
     "eval_passed": 0,
     "raw_results": [
       {
@@ -671,8 +671,8 @@
     "patches_produced": 3,
     "perturbation_eligible": 43,
     "perturbation_fired": 1,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 3,
+    "eval_passed": 2,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
@@ -753,8 +753,8 @@
     "patches_produced": 3,
     "perturbation_eligible": 39,
     "perturbation_fired": 1,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 2,
+    "eval_passed": 1,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
@@ -837,8 +837,8 @@
     "patches_produced": 3,
     "perturbation_eligible": 34,
     "perturbation_fired": 0,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 2,
+    "eval_passed": 1,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
@@ -919,8 +919,8 @@
     "patches_produced": 2,
     "perturbation_eligible": 34,
     "perturbation_fired": 2,
-    "eval_total": 0,
-    "eval_passed": 0,
+    "eval_total": 2,
+    "eval_passed": 1,
     "raw_results": [
       {
         "instance_id": "django__django-16379",
