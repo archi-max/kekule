@@ -482,6 +482,12 @@ def parse_args() -> argparse.Namespace:
         help="Starting iteration number (default: 0, use 3 to continue after 0-2)",
     )
     parser.add_argument(
+        "--swarm-design",
+        type=str,
+        default=None,
+        help="Swarm organizational design: auto, flat, coordinator, lead:<role> (default: auto)",
+    )
+    parser.add_argument(
         "--skip-eval",
         action="store_true",
         help="Skip SWE-bench evaluation (just run agents and collect patches)",

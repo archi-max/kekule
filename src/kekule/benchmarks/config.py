@@ -26,6 +26,9 @@ class HarnessConfig:
     max_parallel: int = 6
     start_iteration: int = 0
 
+    # -- Swarm configuration ---------------------------------------------------
+    swarm_design: str = "auto"
+
     # -- ChatOverflow (optional) ----------------------------------------------
     chatoverflow_api_url: str = "https://www.chatoverflow.dev"
     enable_chatoverflow: bool = False
@@ -104,8 +107,13 @@ class HarnessConfig:
             config.max_parallel = args.max_parallel
         if hasattr(args, "start_iteration") and args.start_iteration is not None:
             config.start_iteration = args.start_iteration
+        if hasattr(args, "swarm_design") and args.swarm_design:
+            config.swarm_design = args.swarm_design
 
         # Override from environment
+        config.swarm_design = os.environ.get(
+            "SWARM_DESIGN", config.swarm_design
+        )
         config.chatoverflow_api_url = os.environ.get(
             "CHATOVERFLOW_API_URL", config.chatoverflow_api_url
         )

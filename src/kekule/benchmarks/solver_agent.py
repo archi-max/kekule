@@ -47,8 +47,23 @@ Find the relevant files, understand the code, and develop your fix.
 ### Step 3: Implement the fix
 Make minimal, focused changes to fix the issue.
 
-### Step 4: Verify
-Run relevant tests if possible. Leave changes as unstaged modifications (no git add/commit).
+### Step 4: Verify — MANDATORY
+After implementing your fix, you MUST run the relevant test suite to verify it works:
+1. Find the test file for the module you changed (look in `tests/` for a file matching the module name)
+2. Run it with: `python -m pytest <test_file> -x -q` (or the project's test runner)
+3. If tests fail, read the failures, fix your code, and re-run until they pass
+4. Only stop when tests pass. Do NOT assume your fix is correct without running tests.
+
+### Step 5: Self-Review — MANDATORY
+After tests pass, critically review your fix before stopping:
+1. **Re-read the problem statement**. Does your fix address the ROOT CAUSE or just the symptom?
+2. **Consider deletion**. Could the bug be caused by code that SHOULDN'T EXIST? Sometimes
+   the correct fix is to remove a method, condition, or override — not to add or change code.
+   Ask: "What happens if this code simply wasn't here?"
+3. **Fewer lines = higher confidence**. If your fix is large, ask if there's a simpler approach.
+4. **If uncertain**, try at least one alternative before stopping — especially deletion.
+
+Leave changes as unstaged modifications (no git add/commit).
 
 ## Important Rules
 - The repo is already cloned at the correct commit in your working directory
@@ -219,8 +234,33 @@ def setup_workspace(task: SWETask, workspace_dir: Path, ref_repo_dir: Path) -> P
     repo_dir = workspace_dir / "repo"
 
     if repo_dir.exists():
-        logger.info(f"Workspace already exists: {repo_dir}")
-        return repo_dir
+        # Validate the existing workspace matches the expected repo
+        try:
+            result = subprocess.run(
+                ["git", "remote", "get-url", "origin"],
+                cwd=str(repo_dir),
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            remote_url = result.stdout.strip() if result.returncode == 0 else ""
+            expected_repo = task.repo  # e.g. "django/django"
+            if expected_repo not in remote_url:
+                logger.warning(
+                    f"Workspace repo mismatch: expected '{expected_repo}' "
+                    f"but found '{remote_url}'. Removing stale workspace."
+                )
+                import shutil
+
+                shutil.rmtree(repo_dir)
+            else:
+                logger.info(f"Workspace already exists: {repo_dir}")
+                return repo_dir
+        except Exception as e:
+            logger.warning(f"Could not validate workspace, recreating: {e}")
+            import shutil
+
+            shutil.rmtree(repo_dir, ignore_errors=True)
 
     logger.info(f"Copying reference repo to {repo_dir}")
     subprocess.run(

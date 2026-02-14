@@ -1,0 +1,337 @@
+2026-02-14 02:38:11,429 - INFO - Building image sweb.eval.x86_64.django__django-11019:latest
+Using dockerfile:
+FROM --platform=linux/x86_64 sweb.env.py.x86_64.2baaea72acc974f6c02079:latest
+
+COPY ./setup_repo.sh /root/
+RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+RUN /bin/bash /root/setup_repo.sh
+
+WORKDIR /testbed/
+
+Adding (1) setup scripts to image build repo
+2026-02-14 02:38:11,429 - INFO - [SETUP SCRIPT] setup_repo.sh:
+#!/bin/bash
+set -euxo pipefail
+git clone -o origin  --single-branch https://github.com/django/django /testbed
+chmod -R 777 /testbed
+cd /testbed
+git reset --hard 93e892bb645b16ebaf287beb5fe7f3ffe8d10408
+git remote remove origin
+TARGET_TIMESTAMP=$(git show -s --format=%ci 93e892bb645b16ebaf287beb5fe7f3ffe8d10408)
+git tag -l | while read tag; do TAG_COMMIT=$(git rev-list -n 1 "$tag"); TAG_TIME=$(git show -s --format=%ci "$TAG_COMMIT"); if [[ "$TAG_TIME" > "$TARGET_TIMESTAMP" ]]; then git tag -d "$tag"; fi; done
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+AFTER_TIMESTAMP=$(date -d "$TARGET_TIMESTAMP + 1 second" '+%Y-%m-%d %H:%M:%S')
+COMMIT_COUNT=$(git log --oneline --all --since="$AFTER_TIMESTAMP" | wc -l)
+[ "$COMMIT_COUNT" -eq 0 ] || exit 1
+source /opt/miniconda3/bin/activate
+conda activate testbed
+echo "Current environment: $CONDA_DEFAULT_ENV"
+python -m pip install -e .
+git config --global user.email setup@swebench.config
+git config --global user.name SWE-bench
+git commit --allow-empty -am SWE-bench
+
+2026-02-14 02:38:11,430 - INFO - Building docker image sweb.eval.x86_64.django__django-11019:latest in logs/build_images/instances/sweb.eval.x86_64.django__django-11019__latest with platform linux/x86_64
+2026-02-14 02:38:13,297 - INFO - Step 1/5 : FROM --platform=linux/x86_64 sweb.env.py.x86_64.2baaea72acc974f6c02079:latest
+2026-02-14 02:38:13,297 - INFO - 
+2026-02-14 02:38:13,318 - INFO - ---> a1b6061353bc
+2026-02-14 02:38:13,318 - INFO - Step 2/5 : COPY ./setup_repo.sh /root/
+2026-02-14 02:38:13,318 - INFO - 
+2026-02-14 02:38:22,544 - INFO - ---> e70c7cae0e22
+2026-02-14 02:38:22,544 - INFO - Step 3/5 : RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+2026-02-14 02:38:22,544 - INFO - 
+2026-02-14 02:38:22,699 - INFO - ---> Running in 5c7a33637d7d
+2026-02-14 02:38:32,247 - INFO - ---> Removed intermediate container 5c7a33637d7d
+2026-02-14 02:38:32,247 - INFO - ---> 9f1c99ba52ae
+2026-02-14 02:38:32,247 - INFO - Step 4/5 : RUN /bin/bash /root/setup_repo.sh
+2026-02-14 02:38:32,248 - INFO - 
+2026-02-14 02:38:32,402 - INFO - ---> Running in 7bbfdb3d0996
+2026-02-14 02:38:32,705 - INFO - + git clone -o origin --single-branch https://github.com/django/django /testbed
+2026-02-14 02:38:32,711 - INFO - Cloning into '/testbed'...
+2026-02-14 02:39:19,909 - INFO - Updating files:  33% (2372/7016)
+2026-02-14 02:39:19,918 - INFO - Updating files:  34% (2386/7016)
+2026-02-14 02:39:19,949 - INFO - Updating files:  35% (2456/7016)
+2026-02-14 02:39:19,995 - INFO - Updating files:  36% (2526/7016)
+2026-02-14 02:39:20,037 - INFO - Updating files:  37% (2596/7016)
+2026-02-14 02:39:20,082 - INFO - Updating files:  38% (2667/7016)
+2026-02-14 02:39:20,154 - INFO - Updating files:  39% (2737/7016)
+2026-02-14 02:39:20,240 - INFO - Updating files:  40% (2807/7016)
+2026-02-14 02:39:20,330 - INFO - Updating files:  41% (2877/7016)
+2026-02-14 02:39:20,426 - INFO - Updating files:  42% (2947/7016)
+2026-02-14 02:39:20,493 - INFO - Updating files:  43% (3017/7016)
+2026-02-14 02:39:20,538 - INFO - Updating files:  44% (3088/7016)
+2026-02-14 02:39:20,612 - INFO - Updating files:  45% (3158/7016)
+2026-02-14 02:39:20,633 - INFO - Updating files:  46% (3228/7016)
+2026-02-14 02:39:20,647 - INFO - Updating files:  47% (3298/7016)
+2026-02-14 02:39:20,660 - INFO - Updating files:  48% (3368/7016)
+2026-02-14 02:39:20,676 - INFO - Updating files:  49% (3438/7016)
+2026-02-14 02:39:20,692 - INFO - Updating files:  50% (3508/7016)
+2026-02-14 02:39:20,704 - INFO - Updating files:  51% (3579/7016)
+2026-02-14 02:39:20,719 - INFO - Updating files:  52% (3649/7016)
+2026-02-14 02:39:20,730 - INFO - Updating files:  53% (3719/7016)
+2026-02-14 02:39:20,747 - INFO - Updating files:  54% (3789/7016)
+2026-02-14 02:39:20,761 - INFO - Updating files:  55% (3859/7016)
+2026-02-14 02:39:20,775 - INFO - Updating files:  56% (3929/7016)
+2026-02-14 02:39:20,789 - INFO - Updating files:  57% (4000/7016)
+2026-02-14 02:39:20,794 - INFO - Updating files:  58% (4070/7016)
+2026-02-14 02:39:20,802 - INFO - Updating files:  59% (4140/7016)
+2026-02-14 02:39:20,809 - INFO - Updating files:  60% (4210/7016)
+2026-02-14 02:39:20,814 - INFO - Updating files:  61% (4280/7016)
+2026-02-14 02:39:20,819 - INFO - Updating files:  62% (4350/7016)
+2026-02-14 02:39:20,834 - INFO - Updating files:  63% (4421/7016)
+2026-02-14 02:39:20,851 - INFO - Updating files:  64% (4491/7016)
+2026-02-14 02:39:20,870 - INFO - Updating files:  65% (4561/7016)
+2026-02-14 02:39:20,886 - INFO - Updating files:  66% (4631/7016)
+2026-02-14 02:39:20,900 - INFO - Updating files:  67% (4701/7016)
+2026-02-14 02:39:20,909 - INFO - Updating files:  67% (4769/7016)Updating files:  68% (4771/7016)
+2026-02-14 02:39:20,924 - INFO - Updating files:  69% (4842/7016)
+2026-02-14 02:39:20,937 - INFO - Updating files:  70% (4912/7016)
+2026-02-14 02:39:20,947 - INFO - Updating files:  71% (4982/7016)
+2026-02-14 02:39:20,960 - INFO - Updating files:  72% (5052/7016)
+2026-02-14 02:39:20,971 - INFO - Updating files:  73% (5122/7016)
+2026-02-14 02:39:20,986 - INFO - Updating files:  74% (5192/7016)
+2026-02-14 02:39:20,999 - INFO - Updating files:  75% (5262/7016)
+2026-02-14 02:39:21,013 - INFO - Updating files:  76% (5333/7016)
+2026-02-14 02:39:21,033 - INFO - Updating files:  77% (5403/7016)
+2026-02-14 02:39:21,049 - INFO - Updating files:  78% (5473/7016)
+2026-02-14 02:39:21,081 - INFO - Updating files:  79% (5543/7016)
+2026-02-14 02:39:21,108 - INFO - Updating files:  80% (5613/7016)
+2026-02-14 02:39:21,122 - INFO - Updating files:  81% (5683/7016)
+2026-02-14 02:39:21,139 - INFO - Updating files:  82% (5754/7016)
+2026-02-14 02:39:21,164 - INFO - Updating files:  83% (5824/7016)
+2026-02-14 02:39:21,181 - INFO - Updating files:  84% (5894/7016)
+2026-02-14 02:39:21,195 - INFO - Updating files:  85% (5964/7016)
+2026-02-14 02:39:21,211 - INFO - Updating files:  86% (6034/7016)
+2026-02-14 02:39:21,226 - INFO - Updating files:  87% (6104/7016)
+2026-02-14 02:39:21,242 - INFO - Updating files:  88% (6175/7016)
+2026-02-14 02:39:21,261 - INFO - Updating files:  89% (6245/7016)
+2026-02-14 02:39:21,283 - INFO - Updating files:  90% (6315/7016)
+2026-02-14 02:39:21,305 - INFO - Updating files:  91% (6385/7016)
+2026-02-14 02:39:21,326 - INFO - Updating files:  92% (6455/7016)
+2026-02-14 02:39:21,337 - INFO - Updating files:  93% (6525/7016)
+2026-02-14 02:39:21,350 - INFO - Updating files:  94% (6596/7016)
+2026-02-14 02:39:21,361 - INFO - Updating files:  95% (6666/7016)
+2026-02-14 02:39:21,378 - INFO - Updating files:  96% (6736/7016)
+2026-02-14 02:39:21,395 - INFO - Updating files:  97% (6806/7016)
+2026-02-14 02:39:21,411 - INFO - Updating files:  98% (6876/7016)
+2026-02-14 02:39:21,428 - INFO - Updating files:  99% (6946/7016)
+2026-02-14 02:39:21,464 - INFO - Updating files: 100% (7016/7016)Updating files: 100% (7016/7016), done.
+2026-02-14 02:39:21,488 - INFO - + chmod -R 777 /testbed
+2026-02-14 02:39:21,621 - INFO - + cd /testbed
++ git reset --hard 93e892bb645b16ebaf287beb5fe7f3ffe8d10408
+2026-02-14 02:39:22,611 - INFO - HEAD is now at 93e892bb64 Refs #29523 -- Updated admin's collapse.min.js.
+2026-02-14 02:39:22,630 - INFO - + git remote remove origin
+2026-02-14 02:39:22,635 - INFO - ++ git show -s --format=%ci 93e892bb645b16ebaf287beb5fe7f3ffe8d10408
+2026-02-14 02:39:22,638 - INFO - + TARGET_TIMESTAMP='2019-02-27 16:17:10 -0500'
+2026-02-14 02:39:22,639 - INFO - + git tag -l
+2026-02-14 02:39:22,639 - INFO - + read tag
+2026-02-14 02:39:22,641 - INFO - ++ git rev-list -n 1 1.0
+2026-02-14 02:39:22,644 - INFO - + TAG_COMMIT=42ef6557a9b88cfc277eb79ddb980e1c62add144
+2026-02-14 02:39:22,644 - INFO - ++ git show -s --format=%ci 42ef6557a9b88cfc277eb79ddb980e1c62add144
+2026-02-14 02:39:22,648 - INFO - + TAG_TIME='2008-09-03 23:38:45 +0000'
++ [[ 2008-09-03 23:38:45 +0000 > 2019-02-27 16:17:10 -0500 ]]
++ read tag
+2026-02-14 02:39:22,648 - INFO - ++ git rev-list -n 1 1.1
+2026-02-14 02:39:22,652 - INFO - + TAG_COMMIT=27358368879cc7d56756f12155393d3277fc52aa
+2026-02-14 02:39:22,652 - INFO - ++ git show -s --format=%ci 27358368879cc7d56756f12155393d3277fc52aa
+2026-02-14 02:39:22,655 - INFO - + TAG_TIME='2009-07-29 05:51:03 +0000'
++ [[ 2009-07-29 05:51:03 +0000 > 2019-02-27 16:17:10 -0500 ]]
++ read tag
+2026-02-14 02:39:22,656 - INFO - ++ git rev-list -n 1 1.2
+2026-02-14 02:39:22,658 - INFO - + TAG_COMMIT=6276167b728256b59071781b2f40d3f48f85cbbe
+2026-02-14 02:39:22,658 - INFO - ++ git show -s --format=%ci 6276167b728256b59071781b2f40d3f48f85cbbe
+2026-02-14 02:39:22,662 - INFO - + TAG_TIME='2010-05-17 17:31:49 +0000'
++ [[ 2010-05-17 17:31:49 +0000 > 2019-02-27 16:17:10 -0500 ]]
++ read tag
+2026-02-14 02:39:22,662 - INFO - ++ git rev-list -n 1 1.2.1
+2026-02-14 02:39:22,665 - INFO - + TAG_COMMIT=6cffb9b8804278c4a617109e65493dc782ef2f7d
+2026-02-14 02:39:22,665 - INFO - ++ git show -s --format=%ci 6cffb9b8804278c4a617109e65493dc782ef2f7d
+2026-02-14 02:39:22,668 - INFO - + TAG_TIME='2010-05-24 19:10:30 +0000'
++ [[ 2010-05-24 19:10:30 +0000 > 2019-02-27 16:17:10 -0500 ]]
++ read tag
+2026-02-14 02:39:22,669 - INFO - ++ git rev-list -n 1 1.3
+2026-02-14 02:39:22,673 - INFO - + TAG_COMMIT=7c08f4c6351f7e53a01ff800d8a61f19ca961b29
+2026-02-14 02:39:22,673 - INFO - ++ git show -s --format=%ci 7c08f4c6351f7e53a01ff800d8a61f19ca961b29
+2026-02-14 02:39:22,677 - INFO - + TAG_TIME='2011-03-23 05:06:31 +0000'
++ [[ 2011-03-23 05:06:31 +0000 > 2019-02-27 16:17:10 -0500 ]]
++ read tag
+2026-02-14 02:39:22,677 - INFO - ++ git rev-list -n 1 1.4
+2026-02-14 02:39:22,681 - INFO - + TAG_COMMIT=2591fb8d4c0246f68b79554976c012039df75359
+2026-02-14 02:39:22,681 - INFO - ++ git show -s --format=%ci 2591fb8d4c0246f68b79554976c012039df75359
+2026-02-14 02:39:22,684 - INFO - + TAG_TIME='2012-03-23 16:53:23 +0000'
++ [[ 2012-03-23 16:53:23 +0000 > 2019-02-27 16:17:10 -0500 ]]
++ read tag
+2026-02-14 02:39:22,685 - INFO - ++ git rev-list -n 1 1.7a1
+2026-02-14 02:39:22,688 - INFO - + TAG_COMMIT=8be9a250c190d9dd8615da4616cdfe401ad6e0af
+2026-02-14 02:39:22,688 - INFO - ++ git show -s --format=%ci 8be9a250c190d9dd8615da4616cdfe401ad6e0af
+2026-02-14 02:39:22,692 - INFO - + TAG_TIME='2014-01-22 21:48:37 -0600'
++ [[ 2014-01-22 21:48:37 -0600 > 2019-02-27 16:17:10 -0500 ]]
++ read tag
+2026-02-14 02:39:22,692 - INFO - ++ git rev-list -n 1 1.7a2
+2026-02-14 02:39:22,696 - INFO - + TAG_COMMIT=43510cffcbf64e73232da1d6209151c7232fd2b6
+2026-02-14 02:39:22,696 - INFO - ++ git show -s --format=%ci 43510cffcbf64e73232da1d6209151c7232fd2b6
+2026-02-14 02:39:22,701 - INFO - + TAG_TIME='2014-02-06 15:54:27 -0600'
++ [[ 2014-02-06 15:54:27 -0600 > 2019-02-27 16:17:10 -0500 ]]
++ read tag
+2026-02-14 02:39:22,702 - INFO - + git reflog expire --expire=now --all
+2026-02-14 02:39:22,707 - INFO - + git gc --prune=now --aggressive
+2026-02-14 02:40:34,442 - INFO - ++ date -d '2019-02-27 16:17:10 -0500 + 1 second' '+%Y-%m-%d %H:%M:%S'
+2026-02-14 02:40:34,443 - INFO - + AFTER_TIMESTAMP='2019-02-27 21:17:11'
+2026-02-14 02:40:34,444 - INFO - ++ git log --oneline --all '--since=2019-02-27 21:17:11'
+2026-02-14 02:40:34,444 - INFO - ++ wc -l
+2026-02-14 02:40:34,449 - INFO - + COMMIT_COUNT=0
++ '[' 0 -eq 0 ']'
++ source /opt/miniconda3/bin/activate
+++ _CONDA_ROOT=/opt/miniconda3
+++ . /opt/miniconda3/etc/profile.d/conda.sh
+2026-02-14 02:40:34,449 - INFO - +++ export CONDA_EXE=/opt/miniconda3/bin/conda
++++ CONDA_EXE=/opt/miniconda3/bin/conda
++++ export _CE_M=
++++ _CE_M=
++++ export _CE_CONDA=
++++ _CE_CONDA=
++++ export CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
++++ CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
+2026-02-14 02:40:34,449 - INFO - +++ '[' -z '' ']'
++++ export CONDA_SHLVL=0
++++ CONDA_SHLVL=0
++++ '[' -n '' ']'
+2026-02-14 02:40:34,449 - INFO - +++++ dirname /opt/miniconda3/bin/conda
+2026-02-14 02:40:34,451 - INFO - ++++ dirname /opt/miniconda3/bin
+2026-02-14 02:40:34,453 - INFO - +++ PATH=/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
++++ export PATH
++++ '[' -z '' ']'
++++ PS1=
+++ conda activate
+++ local cmd=activate
+++ case "$cmd" in
+++ __conda_activate activate
+++ '[' -n '' ']'
+++ local ask_conda
+2026-02-14 02:40:34,454 - INFO - +++ PS1=
++++ __conda_exe shell.posix activate
+2026-02-14 02:40:34,454 - INFO - +++ /opt/miniconda3/bin/conda shell.posix activate
+2026-02-14 02:40:34,557 - INFO - ++ ask_conda='PS1='\''(base) '\''
+export PATH='\''/opt/miniconda3/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\''
+export CONDA_PREFIX='\''/opt/miniconda3'\''
+export CONDA_SHLVL='\''1'\''
+export CONDA_DEFAULT_ENV='\''base'\''
+export CONDA_PROMPT_MODIFIER='\''(base) '\''
+export CONDA_EXE='\''/opt/miniconda3/bin/conda'\''
+export _CE_M='\'''\''
+export _CE_CONDA='\'''\''
+export CONDA_PYTHON_EXE='\''/opt/miniconda3/bin/python'\'''
+++ eval 'PS1='\''(base) '\''
+export PATH='\''/opt/miniconda3/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\''
+export CONDA_PREFIX='\''/opt/miniconda3'\''
+export CONDA_SHLVL='\''1'\''
+export CONDA_DEFAULT_ENV='\''base'\''
+export CONDA_PROMPT_MODIFIER='\''(base) '\''
+export CONDA_EXE='\''/opt/miniconda3/bin/conda'\''
+export _CE_M='\'''\''
+export _CE_CONDA='\'''\''
+export CONDA_PYTHON_EXE='\''/opt/miniconda3/bin/python'\'''
++++ PS1='(base) '
++++ export PATH=/opt/miniconda3/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
++++ PATH=/opt/miniconda3/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
++++ export CONDA_PREFIX=/opt/miniconda3
++++ CONDA_PREFIX=/opt/miniconda3
++++ export CONDA_SHLVL=1
++++ CONDA_SHLVL=1
++++ export CONDA_DEFAULT_ENV=base
++++ CONDA_DEFAULT_ENV=base
++++ export 'CONDA_PROMPT_MODIFIER=(base) '
++++ CONDA_PROMPT_MODIFIER='(base) '
++++ export CONDA_EXE=/opt/miniconda3/bin/conda
++++ CONDA_EXE=/opt/miniconda3/bin/conda
++++ export _CE_M=
++++ _CE_M=
++++ export _CE_CONDA=
++++ _CE_CONDA=
++++ export CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
++++ CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
+++ __conda_hashr
+++ '[' -n '' ']'
+++ '[' -n '' ']'
+++ hash -r
+2026-02-14 02:40:34,557 - INFO - + conda activate testbed
++ local cmd=activate
++ case "$cmd" in
++ __conda_activate activate testbed
++ '[' -n '' ']'
++ local ask_conda
+2026-02-14 02:40:34,557 - INFO - ++ PS1='(base) '
+++ __conda_exe shell.posix activate testbed
+2026-02-14 02:40:34,558 - INFO - ++ /opt/miniconda3/bin/conda shell.posix activate testbed
+2026-02-14 02:40:34,666 - INFO - + ask_conda='PS1='\''(testbed) '\''
+export PATH='\''/opt/miniconda3/envs/testbed/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\''
+export CONDA_PREFIX='\''/opt/miniconda3/envs/testbed'\''
+export CONDA_SHLVL='\''2'\''
+export CONDA_DEFAULT_ENV='\''testbed'\''
+export CONDA_PROMPT_MODIFIER='\''(testbed) '\''
+export CONDA_PREFIX_1='\''/opt/miniconda3'\''
+export CONDA_EXE='\''/opt/miniconda3/bin/conda'\''
+export _CE_M='\'''\''
+export _CE_CONDA='\'''\''
+export CONDA_PYTHON_EXE='\''/opt/miniconda3/bin/python'\'''
++ eval 'PS1='\''(testbed) '\''
+export PATH='\''/opt/miniconda3/envs/testbed/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'\''
+export CONDA_PREFIX='\''/opt/miniconda3/envs/testbed'\''
+export CONDA_SHLVL='\''2'\''
+export CONDA_DEFAULT_ENV='\''testbed'\''
+export CONDA_PROMPT_MODIFIER='\''(testbed) '\''
+export CONDA_PREFIX_1='\''/opt/miniconda3'\''
+export CONDA_EXE='\''/opt/miniconda3/bin/conda'\''
+export _CE_M='\'''\''
+export _CE_CONDA='\'''\''
+export CONDA_PYTHON_EXE='\''/opt/miniconda3/bin/python'\'''
+++ PS1='(testbed) '
+++ export PATH=/opt/miniconda3/envs/testbed/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+++ PATH=/opt/miniconda3/envs/testbed/bin:/opt/miniconda3/condabin:/opt/miniconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+++ export CONDA_PREFIX=/opt/miniconda3/envs/testbed
+++ CONDA_PREFIX=/opt/miniconda3/envs/testbed
+++ export CONDA_SHLVL=2
+++ CONDA_SHLVL=2
+++ export CONDA_DEFAULT_ENV=testbed
+++ CONDA_DEFAULT_ENV=testbed
+++ export 'CONDA_PROMPT_MODIFIER=(testbed) '
+++ CONDA_PROMPT_MODIFIER='(testbed) '
+++ export CONDA_PREFIX_1=/opt/miniconda3
+++ CONDA_PREFIX_1=/opt/miniconda3
+++ export CONDA_EXE=/opt/miniconda3/bin/conda
+++ CONDA_EXE=/opt/miniconda3/bin/conda
+++ export _CE_M=
+++ _CE_M=
+++ export _CE_CONDA=
+++ _CE_CONDA=
+++ export CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
+++ CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
++ __conda_hashr
++ '[' -n '' ']'
++ '[' -n '' ']'
++ hash -r
++ echo 'Current environment: testbed'
++ python -m pip install -e .
+2026-02-14 02:40:34,666 - INFO - Current environment: testbed
+2026-02-14 02:40:34,985 - INFO - Obtaining file:///testbed
+2026-02-14 02:40:35,421 - INFO - Requirement already satisfied: pytz in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.0.dev20190227211710) (2025.2)
+2026-02-14 02:40:35,421 - INFO - Requirement already satisfied: sqlparse in /opt/miniconda3/envs/testbed/lib/python3.6/site-packages (from Django==3.0.dev20190227211710) (0.4.4)
+2026-02-14 02:40:35,504 - INFO - Installing collected packages: Django
+2026-02-14 02:40:35,505 - INFO - Running setup.py develop for Django
+2026-02-14 02:40:36,016 - INFO - Successfully installed Django-3.0.dev20190227211710
+2026-02-14 02:40:36,016 - INFO - WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+2026-02-14 02:40:36,369 - INFO - + git config --global user.email setup@swebench.config
+2026-02-14 02:40:36,371 - INFO - + git config --global user.name SWE-bench
+2026-02-14 02:40:36,373 - INFO - + git commit --allow-empty -am SWE-bench
+2026-02-14 02:40:36,543 - INFO - [main 747065f5cc] SWE-bench
+2026-02-14 02:40:54,901 - INFO - ---> Removed intermediate container 7bbfdb3d0996
+2026-02-14 02:40:54,901 - INFO - ---> 17359e94a0a4
+2026-02-14 02:40:54,901 - INFO - Step 5/5 : WORKDIR /testbed/
+2026-02-14 02:40:54,901 - INFO - 
+2026-02-14 02:40:55,356 - INFO - ---> Running in e1d9ec7adc2a
+2026-02-14 02:41:05,259 - INFO - ---> Removed intermediate container e1d9ec7adc2a
+2026-02-14 02:41:05,261 - INFO - ---> bc5ace3b018e
+2026-02-14 02:41:05,268 - INFO - Successfully built bc5ace3b018e
+2026-02-14 02:41:05,327 - INFO - Successfully tagged sweb.eval.x86_64.django__django-11019:latest
+2026-02-14 02:41:05,328 - INFO - Image built successfully!

@@ -1,0 +1,88 @@
+{
+  "rules": [
+    {
+      "id": "calc_add_basic",
+      "description": "Calculator.add should correctly add two positive numbers, two negative numbers, and a mix of positive and negative. It should also handle zero.",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "add",
+        "test_cases": [
+          {"a": 2, "b": 3, "expected": 5},
+          {"a": -1, "b": -1, "expected": -2},
+          {"a": -5, "b": 5, "expected": 0},
+          {"a": 0, "b": 0, "expected": 0}
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_divide_by_zero",
+      "description": "Calculator.divide must raise ZeroDivisionError when the divisor is zero. It should work normally for non-zero divisors.",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "divide",
+        "expected_exception": "ZeroDivisionError",
+        "normal_cases": [
+          {"a": 10, "b": 2, "expected": 5.0},
+          {"a": -9, "b": 3, "expected": -3.0}
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_converter_roundtrip",
+      "description": "Converting a temperature from Celsius to Fahrenheit and back should return the original value (within floating-point tolerance). Same for Celsius to Kelvin roundtrip.",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "test_values": [0, 100, -40, 37.5, -273.15],
+        "tolerance": 1e-9
+      },
+      "uncertainty": 0.1,
+      "status": "confirmed"
+    },
+    {
+      "id": "stats_mean_basic",
+      "description": "Statistics.mean should return the correct arithmetic mean for a list of numbers. It should raise ValueError for an empty list.",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/stats.py",
+        "class": "Statistics",
+        "method": "mean",
+        "test_cases": [
+          {"data": [1, 2, 3, 4, 5], "expected": 3.0},
+          {"data": [10], "expected": 10.0},
+          {"data": [-1, 1], "expected": 0.0}
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "validator_parse_expression",
+      "description": "InputValidator.parse_expression should correctly parse simple binary expressions like '3 + 4' into (3.0, '+', 4.0). It should handle all operators (+, -, *, /, ^, %) and raise ValueError for invalid expressions.",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/validator.py",
+        "class": "InputValidator",
+        "method": "parse_expression",
+        "valid_expressions": [
+          {"input": "3 + 4", "expected": [3.0, "+", 4.0]},
+          {"input": "10 * 2", "expected": [10.0, "*", 2.0]},
+          {"input": "7 / 3", "expected": [7.0, "/", 3.0]},
+          {"input": "-5 + 3", "expected": [-5.0, "+", 3.0]}
+        ],
+        "invalid_expressions": ["", "hello", "3 +", "+ 4", "3 + 4 + 5"]
+      },
+      "uncertainty": 0.1,
+      "status": "confirmed"
+    }
+  ]
+}

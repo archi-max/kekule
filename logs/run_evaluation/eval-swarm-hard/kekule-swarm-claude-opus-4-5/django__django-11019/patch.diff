@@ -1,0 +1,161 @@
+diff --git a/.gitattributes b/.gitattributes
+index 170bbc2b54..eaea190b65 100644
+--- a/.gitattributes
++++ b/.gitattributes
+@@ -5,3 +5,6 @@
+ tests/staticfiles_tests/apps/test/static/test/*txt text eol=lf
+ tests/staticfiles_tests/project/documents/test/*txt text eol=lf
+ docs/releases/*.txt merge=union
++
++# Use bd merge for beads JSONL files
++.beads/issues.jsonl merge=beads
+diff --git a/django/forms/widgets.py b/django/forms/widgets.py
+index 02aa32b207..e676885c20 100644
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -59,22 +59,73 @@ class Media:
+ 
+     @property
+     def _css(self):
+-        css = self._css_lists[0]
+-        # filter(None, ...) avoids calling merge with empty dicts.
+-        for obj in filter(None, self._css_lists[1:]):
+-            css = {
+-                medium: self.merge(css.get(medium, []), obj.get(medium, []))
+-                for medium in css.keys() | obj.keys()
+-            }
+-        return css
++        css = {}
++        for css_list in self._css_lists:
++            for medium in css_list:
++                css.setdefault(medium, []).append(css_list[medium])
++        return {medium: self.merge(*lists) for medium, lists in css.items()}
+ 
+     @property
+     def _js(self):
+-        js = self._js_lists[0]
+-        # filter(None, ...) avoids calling merge() with empty lists.
+-        for obj in filter(None, self._js_lists[1:]):
+-            js = self.merge(js, obj)
+-        return js
++        return self.merge(*self._js_lists)
++
++    @staticmethod
++    def merge(*lists):
++        """
++        Merge lists of files while trying to keep the relative order of the
++        elements. Warn if the lists have the same two elements in a different
++        relative order.
++
++        For static assets it can be important to have them included in the DOM
++        in a certain order. In JavaScript you may not be able to reference a
++        global or in CSS you might want to override a style.
++        """
++        dependency_graph = {}
++        all_items = []
++
++        for list_ in lists:
++            for i, item in enumerate(list_):
++                if item not in dependency_graph:
++                    dependency_graph[item] = set()
++                    all_items.append(item)
++                # Each item depends on the items that come before it in the list
++                for dep in list_[:i]:
++                    dependency_graph[item].add(dep)
++
++        # Check for conflicts and build result using topological sort
++        result = []
++        while dependency_graph:
++            # Find items with no dependencies (all deps already in result)
++            ready = [
++                item for item, deps in dependency_graph.items()
++                if deps <= set(result)
++            ]
++            if not ready:
++                # Circular dependency or conflict - find conflicting items
++                for item, deps in list(dependency_graph.items()):
++                    unresolved_deps = deps - set(result)
++                    for dep in list(unresolved_deps):
++                        if dep in dependency_graph and item in dependency_graph[dep]:
++                            # Circular dependency detected
++                            warnings.warn(
++                                'Detected duplicate Media files in an opposite order:\n'
++                                '%s\n%s' % (item, dep),
++                                MediaOrderConflictWarning,
++                            )
++                            # Break the cycle by removing the dependency
++                            dependency_graph[item].discard(dep)
++                # If still stuck, just pick one to make progress
++                if not [item for item, deps in dependency_graph.items() if deps <= set(result)]:
++                    ready = [min(dependency_graph.keys(), key=lambda x: all_items.index(x))]
++            else:
++                # Sort ready items to maintain stable order (by first appearance)
++                ready.sort(key=lambda x: all_items.index(x))
++
++            for item in ready:
++                result.append(item)
++                del dependency_graph[item]
++
++        return result
+ 
+     def render(self):
+         return mark_safe('\n'.join(chain.from_iterable(getattr(self, 'render_' + name)() for name in MEDIA_TYPES)))
+@@ -114,41 +165,6 @@ class Media:
+             return Media(**{str(name): getattr(self, '_' + name)})
+         raise KeyError('Unknown media type "%s"' % name)
+ 
+-    @staticmethod
+-    def merge(list_1, list_2):
+-        """
+-        Merge two lists while trying to keep the relative order of the elements.
+-        Warn if the lists have the same two elements in a different relative
+-        order.
+-
+-        For static assets it can be important to have them included in the DOM
+-        in a certain order. In JavaScript you may not be able to reference a
+-        global or in CSS you might want to override a style.
+-        """
+-        # Start with a copy of list_1.
+-        combined_list = list(list_1)
+-        last_insert_index = len(list_1)
+-        # Walk list_2 in reverse, inserting each element into combined_list if
+-        # it doesn't already exist.
+-        for path in reversed(list_2):
+-            try:
+-                # Does path already exist in the list?
+-                index = combined_list.index(path)
+-            except ValueError:
+-                # Add path to combined_list since it doesn't exist.
+-                combined_list.insert(last_insert_index, path)
+-            else:
+-                if index > last_insert_index:
+-                    warnings.warn(
+-                        'Detected duplicate Media files in an opposite order:\n'
+-                        '%s\n%s' % (combined_list[last_insert_index], combined_list[index]),
+-                        MediaOrderConflictWarning,
+-                    )
+-                # path already exists in the list. Update last_insert_index so
+-                # that the following elements are inserted in front of this one.
+-                last_insert_index = index
+-        return combined_list
+-
+     def __add__(self, other):
+         combined = Media()
+         combined._css_lists = self._css_lists + other._css_lists
+diff --git a/django/utils/version.py b/django/utils/version.py
+index 7d17da318f..cce84f5c86 100644
+--- a/django/utils/version.py
++++ b/django/utils/version.py
+@@ -3,7 +3,11 @@ import functools
+ import os
+ import subprocess
+ import sys
+-from distutils.version import LooseVersion
++try:
++    from distutils.version import LooseVersion
++except ImportError:
++    # Python 3.12+ removed distutils
++    from packaging.version import Version as LooseVersion
+ 
+ # Private, stable API for detecting the Python version. PYXY means "Python X.Y
+ # or later". So that third-party apps can use these values, each constant
