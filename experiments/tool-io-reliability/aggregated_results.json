@@ -1,0 +1,66 @@
+{
+  "toolio-baseline": {
+    "runs": 3,
+    "avg_cost_usd": 9.557934666666668,
+    "avg_turns": 375.3333333333333,
+    "avg_duration_s": 187.04423949453567,
+    "resolve_rate": null,
+    "configured_intensity": 0.0,
+    "observed_fire_rate": 0.0,
+    "perturbation_eligible": 0,
+    "perturbation_fired": 0,
+    "seeds": [
+      1,
+      2,
+      3
+    ]
+  },
+  "toolio-low": {
+    "runs": 3,
+    "avg_cost_usd": 9.584647333333333,
+    "avg_turns": 368.3333333333333,
+    "avg_duration_s": 205.91348889138965,
+    "resolve_rate": null,
+    "configured_intensity": 0.05,
+    "observed_fire_rate": 0.007352941176470588,
+    "perturbation_eligible": 136,
+    "perturbation_fired": 1,
+    "seeds": [
+      1,
+      2,
+      3
+    ]
+  },
+  "toolio-medium": {
+    "runs": 3,
+    "avg_cost_usd": 9.243649916666667,
+    "avg_turns": 370.0,
+    "avg_duration_s": 195.47723552915784,
+    "resolve_rate": null,
+    "configured_intensity": 0.1,
+    "observed_fire_rate": 0.02040816326530612,
+    "perturbation_eligible": 98,
+    "perturbation_fired": 2,
+    "seeds": [
+      1,
+      2,
+      3
+    ]
+  },
+  "toolio-high": {
+    "runs": 3,
+    "avg_cost_usd": 10.371762833333333,
+    "avg_turns": 397.6666666666667,
+    "avg_duration_s": 209.40358185768127,
+    "resolve_rate": null,
+    "configured_intensity": 0.2,
+    "observed_fire_rate": 0.028037383177570093,
+    "perturbation_eligible": 107,
+    "perturbation_fired": 3,
+    "seeds": [
+      1,
+      2,
+      3
+    ]
+  }
+}

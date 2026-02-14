@@ -13,6 +13,7 @@ import logging
 import os
 import subprocess
 import time
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 from claude_agent_sdk import (
@@ -27,10 +28,13 @@ from claude_agent_sdk import (
 )
 
 from .config import HarnessConfig
+from .perturbation_policy import PerturbationPolicy
 from .task_selector import SWETask
 from .tracing import AgentTraceData, build_agent_hooks
 
 logger = logging.getLogger(__name__)
+
+SDK_STREAM_CLOSE_TIMEOUT_MS = "86400000"  # 24h
 
 
 SWE_SOLVER_SYSTEM_PROMPT = """
@@ -264,6 +268,32 @@ Make minimal changes, do not create branches or commits, just edit the files dir
 """
 
 
+async def streaming_user_prompt(prompt: str) -> AsyncIterator[dict]:
+    """
+    Emit a single user message in streaming format.
+
+    Hooks require the SDK streaming input path to keep control callbacks alive.
+    """
+    yield {
+        "type": "user",
+        "session_id": "",
+        "message": {"role": "user", "content": prompt},
+        "parent_tool_use_id": None,
+    }
+
+
+def ensure_sdk_stream_close_timeout() -> None:
+    """
+    Keep SDK control channel open long enough for hook-heavy runs.
+
+    Claude Agent SDK defaults to ~60s, which can close stdin mid-session.
+    """
+    os.environ.setdefault(
+        "CLAUDE_CODE_STREAM_CLOSE_TIMEOUT",
+        SDK_STREAM_CLOSE_TIMEOUT_MS,
+    )
+
+
 async def solve_swe_task(
     task: SWETask,
     agent_id: str,
@@ -307,7 +337,17 @@ async def solve_swe_task(
         }
 
     # Build Claude Agent SDK options
-    hooks = build_agent_hooks(trace_data)
+    hooks = build_agent_hooks(
+        trace_data,
+        perturbation_policy=PerturbationPolicy(
+            mode=config.perturbation_mode,
+            intensity=config.perturbation_intensity,
+            target_tools=tuple(config.perturbation_target_tools),
+            seed=config.perturbation_seed,
+            phase_scope=config.perturbation_phase_scope,
+        ),
+        phase_tag="single_agent",
+    )
 
     # Build system prompt
     system_prompt = SWE_SOLVER_SYSTEM_PROMPT
@@ -340,7 +380,8 @@ async def solve_swe_task(
             "Task",
             "WebFetch",
         ],
-        setting_sources=["user"],
+        # Explicitly use project settings only (exclude user/local hooks).
+        setting_sources=["project"],
         env=env,
         max_turns=config.max_agent_turns,
         hooks=hooks,
@@ -350,9 +391,13 @@ async def solve_swe_task(
     trace_data.prompt = prompt
 
     logger.info(f"[{agent_id}] Starting solver for {task.instance_id}")
+    ensure_sdk_stream_close_timeout()
 
     try:
-        async for message in query(prompt=prompt, options=options):
+        async for message in query(
+            prompt=streaming_user_prompt(prompt),
+            options=options,
+        ):
             if isinstance(message, AssistantMessage):
                 # Serialize content blocks for tracing
                 content_dicts = []
@@ -425,4 +470,12 @@ async def solve_swe_task(
         "duration_s": elapsed,
         "num_turns": trace_data.num_turns,
         "cost_usd": trace_data.total_cost_usd,
+        "perturbation_policy_id": trace_data.perturbation_policy_id,
+        "perturbation_eligible": trace_data.perturbation_eligible,
+        "perturbation_fired": trace_data.perturbation_fired,
+        "perturbation_fire_rate": (
+            trace_data.perturbation_fired / trace_data.perturbation_eligible
+            if trace_data.perturbation_eligible > 0
+            else 0.0
+        ),
     }

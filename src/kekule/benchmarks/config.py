@@ -26,6 +26,13 @@ class HarnessConfig:
     max_parallel: int = 6
     start_iteration: int = 0
 
+    # -- Perturbation policy --------------------------------------------------
+    perturbation_mode: str = "off"
+    perturbation_intensity: float = 0.0
+    perturbation_target_tools: list[str] = field(default_factory=lambda: ["Bash"])
+    perturbation_seed: int = 0
+    perturbation_phase_scope: str = "swarm_phase1"
+
     # -- ChatOverflow (optional) ----------------------------------------------
     chatoverflow_api_url: str = "https://www.chatoverflow.dev"
     enable_chatoverflow: bool = False
@@ -104,6 +111,16 @@ class HarnessConfig:
             config.max_parallel = args.max_parallel
         if hasattr(args, "start_iteration") and args.start_iteration is not None:
             config.start_iteration = args.start_iteration
+        if hasattr(args, "perturbation_mode") and args.perturbation_mode:
+            config.perturbation_mode = args.perturbation_mode
+        if hasattr(args, "perturbation_intensity") and args.perturbation_intensity is not None:
+            config.perturbation_intensity = args.perturbation_intensity
+        if hasattr(args, "perturbation_target_tools") and args.perturbation_target_tools:
+            config.perturbation_target_tools = args.perturbation_target_tools
+        if hasattr(args, "perturbation_seed") and args.perturbation_seed is not None:
+            config.perturbation_seed = args.perturbation_seed
+        if hasattr(args, "perturbation_phase_scope") and args.perturbation_phase_scope:
+            config.perturbation_phase_scope = args.perturbation_phase_scope
 
         # Override from environment
         config.chatoverflow_api_url = os.environ.get(
@@ -118,6 +135,42 @@ class HarnessConfig:
         config.langfuse_base_url = os.environ.get(
             "LANGFUSE_BASE_URL", config.langfuse_base_url
         )
+        config.perturbation_mode = os.environ.get(
+            "PERTURBATION_MODE", config.perturbation_mode
+        )
+
+        env_intensity = os.environ.get("PERTURBATION_INTENSITY")
+        if env_intensity is not None:
+            try:
+                config.perturbation_intensity = float(env_intensity)
+            except ValueError:
+                pass
+
+        env_targets = os.environ.get("PERTURBATION_TARGET_TOOLS")
+        if env_targets:
+            parsed_targets = [
+                tool.strip() for tool in env_targets.split(",") if tool.strip()
+            ]
+            if parsed_targets:
+                config.perturbation_target_tools = parsed_targets
+
+        env_seed = os.environ.get("PERTURBATION_SEED")
+        if env_seed is not None:
+            try:
+                config.perturbation_seed = int(env_seed)
+            except ValueError:
+                pass
+
+        config.perturbation_phase_scope = os.environ.get(
+            "PERTURBATION_PHASE_SCOPE", config.perturbation_phase_scope
+        )
+
+        # Backward compatibility: historical runs used intensity with no mode.
+        if (
+            config.perturbation_mode == "off"
+            and config.perturbation_intensity > 0
+        ):
+            config.perturbation_mode = "context_uncertainty"
 
         return config
 

@@ -8,8 +8,11 @@ SWE-bench tasks through:
   3. Test-driven verification and cross-agent endorsement
   4. Optional ChatOverflow integration for cross-run knowledge
 
-Perturbation: Context perturbation via uncertainty injection into agent
-system prompts. Controlled by PERTURBATION_INTENSITY env var (0.0-0.20).
+Perturbation supports two modes:
+  1. context_uncertainty: system-prompt uncertainty notices
+  2. tool_io_degrade: hook-level degradations of verification tool outputs
+
+Modes/intensity are controlled by HarnessConfig perturbation fields.
 
 Architecture:
   Phase 0: PLANNING — single query() call plans 2-4 roles
@@ -20,7 +23,6 @@ Architecture:
 import asyncio
 import json
 import logging
-import os
 import re
 import subprocess
 import time
@@ -38,10 +40,13 @@ from claude_agent_sdk import (
 )
 
 from ..config import HarnessConfig
+from ..perturbation_policy import PerturbationPolicy
 from ..solver_agent import (
     CHATOVERFLOW_SWE_SKILL_PROMPT,
+    ensure_sdk_stream_close_timeout,
     extract_patch,
     setup_workspace,
+    streaming_user_prompt,
 )
 from ..task_selector import SWETask
 from ..tracing import AgentTraceData, build_agent_hooks
@@ -208,13 +213,17 @@ async def plan_roles(task: SWETask, repo_dir: Path, config: HarnessConfig) -> li
         permission_mode="bypassPermissions",
         cwd=str(repo_dir),
         allowed_tools=["Read", "Glob", "Grep", "Bash"],
-        setting_sources=["user"],
+        # Explicitly use project settings only (exclude user/local hooks).
+        setting_sources=["project"],
         max_turns=PLANNER_MAX_TURNS,
     )
 
     last_text = ""
     try:
-        async for message in query(prompt=prompt, options=options):
+        async for message in query(
+            prompt=streaming_user_prompt(prompt),
+            options=options,
+        ):
             if isinstance(message, AssistantMessage):
                 for block in message.content:
                     if isinstance(block, TextBlock) and block.text.strip():
@@ -280,6 +289,7 @@ async def run_swarm_agent(
     num_agents: int,
     config: HarnessConfig,
     intensity: float,
+    perturbation_policy: PerturbationPolicy,
     trace_data: AgentTraceData,
     agent_api_key: str,
 ) -> None:
@@ -293,8 +303,11 @@ async def run_swarm_agent(
     - Perturbation text injected into system prompt
     - Optional ChatOverflow access
     """
-    # Select perturbation text for the closest intensity level
-    perturbation_text = _get_perturbation_text(intensity)
+    # Context perturbation text only applies in context_uncertainty mode.
+    perturbation_text = _get_context_perturbation_text(
+        config.perturbation_mode,
+        intensity,
+    )
 
     # Build ChatOverflow prompt if enabled
     chatoverflow_prompt = ""
@@ -318,7 +331,11 @@ async def run_swarm_agent(
         env["CHATOVERFLOW_API_URL"] = config.chatoverflow_api_url
         env["CHATOVERFLOW_API_KEY"] = agent_api_key
 
-    hooks = build_agent_hooks(trace_data)
+    hooks = build_agent_hooks(
+        trace_data,
+        perturbation_policy=perturbation_policy,
+        phase_tag="swarm_phase1",
+    )
 
     options = ClaudeAgentOptions(
         system_prompt={
@@ -330,7 +347,8 @@ async def run_swarm_agent(
         permission_mode="bypassPermissions",
         cwd=str(repo_dir),
         allowed_tools=["Bash", "Read", "Write", "Edit", "Glob", "Grep"],
-        setting_sources=["user"],
+        # Explicitly use project settings only (exclude user/local hooks).
+        setting_sources=["project"],
         env=env,
         max_turns=SWARM_AGENT_MAX_TURNS,
         hooks=hooks,
@@ -361,10 +379,17 @@ Make minimal changes, do not create branches or commits, just edit the files dir
     agent_label = f"swarm-agent-{agent_num}"
     trace_data.prompt = prompt
 
-    logger.info(f"[{agent_label}] Starting (role: {role['name']}, intensity: {intensity})")
+    logger.info(
+        f"[{agent_label}] Starting (role: {role['name']}, "
+        f"mode: {config.perturbation_mode}, intensity: {intensity})"
+    )
+    ensure_sdk_stream_close_timeout()
 
     try:
-        async for message in query(prompt=prompt, options=options):
+        async for message in query(
+            prompt=streaming_user_prompt(prompt),
+            options=options,
+        ):
             if isinstance(message, AssistantMessage):
                 content_dicts = []
                 for block in message.content:
@@ -414,8 +439,10 @@ Make minimal changes, do not create branches or commits, just edit the files dir
         trace_data.error = f"agent_exception: {e}"
 
 
-def _get_perturbation_text(intensity: float) -> str:
-    """Get the perturbation prompt text for the given intensity level."""
+def _get_context_perturbation_text(mode: str, intensity: float) -> str:
+    """Get uncertainty prompt text when running context perturbation mode."""
+    if mode != "context_uncertainty":
+        return ""
     if intensity <= 0.0:
         return ""
     # Find the closest defined level at or below the given intensity
@@ -573,11 +600,12 @@ async def solve_swe_task(
         Dict with instance_id, model_patch, model_name_or_path, and metadata
     """
     start_time = time.time()
-    intensity = float(os.environ.get("PERTURBATION_INTENSITY", "0.0"))
+    intensity = config.perturbation_intensity
+    mode = config.perturbation_mode
 
     logger.info(
         f"[{agent_id}] Perturbation swarm solver starting "
-        f"(intensity={intensity})"
+        f"(mode={mode}, intensity={intensity}, seed={config.perturbation_seed})"
     )
 
     # Setup workspace by copying from reference repo
@@ -597,6 +625,13 @@ async def solve_swe_task(
         }
 
     ledger_dir = repo_dir / "swarm_ledger"
+    swarm_policy = PerturbationPolicy(
+        mode=mode,
+        intensity=intensity,
+        target_tools=tuple(config.perturbation_target_tools),
+        seed=config.perturbation_seed,
+        phase_scope=config.perturbation_phase_scope,
+    )
 
     # ------------------------------------------------------------------
     # Phase 0: Plan roles
@@ -646,6 +681,7 @@ async def solve_swe_task(
             num_agents=len(roles),
             config=config,
             intensity=intensity,
+            perturbation_policy=swarm_policy,
             trace_data=agent_trace_datas[i],
             agent_api_key=agent_api_key,
         )
@@ -656,17 +692,27 @@ async def solve_swe_task(
     total_turns = 0
     total_cost = 0.0
     all_messages = []
+    all_perturbation_events = []
+    total_perturbation_eligible = 0
+    total_perturbation_fired = 0
     errors = []
     for atd in agent_trace_datas:
         total_turns += atd.num_turns
         total_cost += atd.total_cost_usd
         all_messages.extend(atd.messages)
+        all_perturbation_events.extend(atd.perturbation_events)
+        total_perturbation_eligible += atd.perturbation_eligible
+        total_perturbation_fired += atd.perturbation_fired
         if atd.error:
             errors.append(atd.error)
 
     trace_data.num_turns = total_turns
     trace_data.total_cost_usd = total_cost
     trace_data.messages = all_messages
+    trace_data.perturbation_policy_id = swarm_policy.policy_id
+    trace_data.perturbation_events = all_perturbation_events
+    trace_data.perturbation_eligible = total_perturbation_eligible
+    trace_data.perturbation_fired = total_perturbation_fired
     if errors:
         trace_data.error = "; ".join(errors)
 
@@ -683,7 +729,8 @@ async def solve_swe_task(
         f"[{agent_id}] Finished in {elapsed:.1f}s, "
         f"patch={'yes' if patch.strip() else 'no'} "
         f"({len(patch)} bytes), "
-        f"total_turns={total_turns}, total_cost=${total_cost:.4f}"
+        f"total_turns={total_turns}, total_cost=${total_cost:.4f}, "
+        f"perturbation_fired={total_perturbation_fired}/{total_perturbation_eligible}"
     )
 
     return {
@@ -695,7 +742,16 @@ async def solve_swe_task(
         "num_turns": total_turns,
         "cost_usd": total_cost,
         "swarm_agents": len(roles),
+        "perturbation_mode": mode,
+        "perturbation_policy_id": swarm_policy.policy_id,
         "perturbation_intensity": intensity,
+        "perturbation_eligible": total_perturbation_eligible,
+        "perturbation_fired": total_perturbation_fired,
+        "perturbation_fire_rate": (
+            total_perturbation_fired / total_perturbation_eligible
+            if total_perturbation_eligible > 0
+            else 0.0
+        ),
         "roles": [r["name"] for r in roles],
     }
 

@@ -14,9 +14,7 @@ import argparse
 import asyncio
 import json
 import logging
-import os
 import sys
-import time
 from pathlib import Path
 
 import httpx
@@ -292,7 +290,12 @@ async def run_experiment(config: HarnessConfig, skip_eval: bool = False):
         f"  Agents/problem:    {config.agents_per_problem}\n"
         f"  Iterations:        {config.num_iterations}\n"
         f"  ChatOverflow:      {'enabled' if config.enable_chatoverflow else 'disabled'}\n"
-        f"  LangFuse:          {'enabled' if config.langfuse_enabled else 'disabled'}"
+        f"  LangFuse:          {'enabled' if config.langfuse_enabled else 'disabled'}\n"
+        f"  Perturbation mode: {config.perturbation_mode}\n"
+        f"  Perturbation p:    {config.perturbation_intensity}\n"
+        f"  Perturbation seed: {config.perturbation_seed}\n"
+        f"  Perturbation tools:{','.join(config.perturbation_target_tools)}\n"
+        f"  Perturbation phase:{config.perturbation_phase_scope}"
     )
 
     # Initialize tracing
@@ -482,6 +485,38 @@ def parse_args() -> argparse.Namespace:
         help="Starting iteration number (default: 0, use 3 to continue after 0-2)",
     )
     parser.add_argument(
+        "--perturbation-mode",
+        type=str,
+        choices=["off", "context_uncertainty", "tool_io_degrade"],
+        default=None,
+        help="Perturbation mode (default: off).",
+    )
+    parser.add_argument(
+        "--perturbation-intensity",
+        type=float,
+        default=None,
+        help="Perturbation intensity / fire probability (e.g., 0.05, 0.10, 0.20).",
+    )
+    parser.add_argument(
+        "--perturbation-target-tools",
+        nargs="+",
+        default=None,
+        help="Tools eligible for perturbation (default: Bash).",
+    )
+    parser.add_argument(
+        "--perturbation-seed",
+        type=int,
+        default=None,
+        help="Deterministic seed for perturbation firing decisions.",
+    )
+    parser.add_argument(
+        "--perturbation-phase-scope",
+        type=str,
+        choices=["any", "swarm_phase1", "single_agent"],
+        default=None,
+        help="Phase where perturbations are allowed.",
+    )
+    parser.add_argument(
         "--skip-eval",
         action="store_true",
         help="Skip SWE-bench evaluation (just run agents and collect patches)",
@@ -512,6 +547,11 @@ def main():
         print(f"  ChatOverflow:      {'enabled' if config.enable_chatoverflow else 'disabled'}")
         print(f"  ChatOverflow URL:  {config.chatoverflow_api_url}")
         print(f"  LangFuse:          {'enabled' if config.langfuse_enabled else 'disabled'}")
+        print(f"  Perturbation mode: {config.perturbation_mode}")
+        print(f"  Perturbation p:    {config.perturbation_intensity}")
+        print(f"  Perturbation tools:{','.join(config.perturbation_target_tools)}")
+        print(f"  Perturbation seed: {config.perturbation_seed}")
+        print(f"  Perturbation phase:{config.perturbation_phase_scope}")
         print(f"  Results dir:       {config.results_dir}")
         print(f"  Workspaces dir:    {config.workspaces_dir}")
         claude_env = config.get_claude_env()

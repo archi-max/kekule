@@ -13,6 +13,11 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from .perturbation_policy import (
+    PerturbationPolicy,
+    evaluate_post_tool_use_perturbation,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,6 +40,10 @@ class AgentTraceData:
     patch_produced: bool = False
     patch_content: str = ""
     error: str | None = None
+    perturbation_policy_id: str = "none"
+    perturbation_eligible: int = 0
+    perturbation_fired: int = 0
+    perturbation_events: list[dict] = field(default_factory=list)
 
 
 class TracingManager:
@@ -127,6 +136,14 @@ class TracingManager:
                 "num_turns": trace_data.num_turns,
                 "total_cost_usd": trace_data.total_cost_usd,
                 "tool_call_count": len(trace_data.tool_calls),
+                "perturbation_policy_id": trace_data.perturbation_policy_id,
+                "perturbation_eligible": trace_data.perturbation_eligible,
+                "perturbation_fired": trace_data.perturbation_fired,
+                "perturbation_fire_rate": (
+                    trace_data.perturbation_fired / trace_data.perturbation_eligible
+                    if trace_data.perturbation_eligible > 0
+                    else 0.0
+                ),
                 "error": trace_data.error,
             },
         )
@@ -284,7 +301,11 @@ class _NoOpSpan:
         pass
 
 
-def build_agent_hooks(trace_data: AgentTraceData):
+def build_agent_hooks(
+    trace_data: AgentTraceData,
+    perturbation_policy: PerturbationPolicy | None = None,
+    phase_tag: str = "default",
+):
     """
     Build Claude Agent SDK hooks that log tool usage to the trace data.
 
@@ -292,7 +313,14 @@ def build_agent_hooks(trace_data: AgentTraceData):
     Returns a hooks dict suitable for ClaudeAgentOptions.
     """
     from claude_agent_sdk import HookMatcher
-    from claude_agent_sdk.types import PostToolUseHookInput, HookContext
+    from claude_agent_sdk.types import (
+        HookContext,
+        PostToolUseFailureHookInput,
+        PostToolUseHookInput,
+    )
+
+    policy = perturbation_policy or PerturbationPolicy()
+    trace_data.perturbation_policy_id = policy.policy_id
 
     async def on_tool_use(
         input_data: PostToolUseHookInput,
@@ -305,6 +333,8 @@ def build_agent_hooks(trace_data: AgentTraceData):
             trace_data.tool_calls.append(
                 {
                     "tool": tool_name,
+                    "tool_use_id": tool_use_id or "",
+                    "phase": phase_tag,
                     "timestamp": time.time(),
                 }
             )
@@ -323,13 +353,67 @@ def build_agent_hooks(trace_data: AgentTraceData):
                         trace_data.chatoverflow_answers_received += 1
                     elif "/questions" in cmd:
                         trace_data.chatoverflow_questions += 1
+
+            perturb_result = evaluate_post_tool_use_perturbation(
+                policy=policy,
+                phase_tag=phase_tag,
+                tool_name=tool_name,
+                tool_input=tool_input,
+                tool_response=input_data.get("tool_response"),
+                tool_use_id=tool_use_id,
+            )
+
+            event = perturb_result.event
+            trace_data.perturbation_events.append(event)
+            if perturb_result.eligible:
+                trace_data.perturbation_eligible += 1
+            if perturb_result.fired:
+                trace_data.perturbation_fired += 1
+
+            if perturb_result.fired and perturb_result.updated_tool_output is not None:
+                return {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PostToolUse",
+                        "updatedMCPToolOutput": perturb_result.updated_tool_output,
+                        "additionalContext": (
+                            "Perturbation policy degraded this tool output. "
+                            "Run additional verification commands if needed."
+                        ),
+                    }
+                }
         except Exception:
             pass  # Never let hook errors crash the agent
 
         return {}
 
+    async def on_tool_failure(
+        input_data: PostToolUseFailureHookInput,
+        tool_use_id: str | None,
+        context: HookContext,
+    ):
+        try:
+            trace_data.perturbation_events.append({
+                "policy_id": policy.policy_id,
+                "mode": policy.mode,
+                "phase": phase_tag,
+                "tool_name": input_data.get("tool_name", "unknown"),
+                "tool_use_id": tool_use_id or "",
+                "intensity": policy.intensity,
+                "eligible": False,
+                "fired": False,
+                "reason": "tool_use_failure",
+                "transform_type": "none",
+                "timestamp": time.time(),
+            })
+        except Exception:
+            pass
+        return {}
+
     return {
         "PostToolUse": [
             HookMatcher(hooks=[on_tool_use]),
+        ],
+        "PostToolUseFailure": [
+            HookMatcher(hooks=[on_tool_failure]),
         ],
     }
