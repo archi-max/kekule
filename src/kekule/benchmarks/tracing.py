@@ -48,6 +48,7 @@ class TracingManager:
         if self._enabled:
             try:
                 from langfuse import Langfuse
+
                 self.langfuse = Langfuse(
                     secret_key=config.langfuse_secret_key,
                     public_key=config.langfuse_public_key,
@@ -61,7 +62,9 @@ class TracingManager:
                 logger.warning(f"Failed to connect to LangFuse: {e}")
                 self._enabled = False
         else:
-            logger.info("LangFuse tracing not configured (set LANGFUSE_SECRET_KEY, LANGFUSE_PUBLIC_KEY, LANGFUSE_BASE_URL to enable)")
+            logger.info(
+                "LangFuse tracing not configured (set LANGFUSE_SECRET_KEY, LANGFUSE_PUBLIC_KEY, LANGFUSE_BASE_URL to enable)"
+            )
 
     @property
     def enabled(self) -> bool:
@@ -123,7 +126,9 @@ class TracingManager:
             input={"prompt": trace_data.prompt},
             output={
                 "patch_produced": trace_data.patch_produced,
-                "patch": trace_data.patch_content[:5000] if trace_data.patch_content else "",
+                "patch": trace_data.patch_content[:5000]
+                if trace_data.patch_content
+                else "",
                 "num_turns": trace_data.num_turns,
                 "total_cost_usd": trace_data.total_cost_usd,
                 "tool_call_count": len(trace_data.tool_calls),
@@ -164,10 +169,17 @@ class TracingManager:
                     output=assistant_text,
                     metadata={
                         "tool_uses": [
-                            {"name": t["name"], "input_preview": _truncate_dict(t.get("input", {}), 500)}
+                            {
+                                "name": t["name"],
+                                "input_preview": _truncate_dict(
+                                    t.get("input", {}), 500
+                                ),
+                            }
                             for t in tool_uses
                         ],
-                    } if tool_uses else None,
+                    }
+                    if tool_uses
+                    else None,
                 )
                 gen.end()
 
@@ -284,12 +296,21 @@ class _NoOpSpan:
         pass
 
 
-def build_agent_hooks(trace_data: AgentTraceData):
+def build_agent_hooks(
+    trace_data: AgentTraceData,
+    extra_post_hooks: list | None = None,
+):
     """
     Build Claude Agent SDK hooks that log tool usage to the trace data.
 
     Tracks ChatOverflow interactions via HTTP API (curl commands in Bash tool).
     Returns a hooks dict suitable for ClaudeAgentOptions.
+
+    Args:
+        trace_data: Accumulated trace data for the agent.
+        extra_post_hooks: Optional list of additional HookMatcher instances
+            to append to the PostToolUse hook chain.  Used by solvers that
+            need to compose perturbation hooks with tracing hooks.
     """
     from claude_agent_sdk import HookMatcher
     from claude_agent_sdk.types import PostToolUseHookInput, HookContext
@@ -316,7 +337,11 @@ def build_agent_hooks(trace_data: AgentTraceData):
                 elif isinstance(tool_input, str):
                     cmd = tool_input
 
-                if "/questions" in cmd or "/forums" in cmd or "chatoverflow" in cmd.lower():
+                if (
+                    "/questions" in cmd
+                    or "/forums" in cmd
+                    or "chatoverflow" in cmd.lower()
+                ):
                     if "POST" in cmd and "/questions" in cmd and "/answers" not in cmd:
                         trace_data.chatoverflow_questions += 1
                     elif "POST" in cmd and "/answers" in cmd:
@@ -328,8 +353,10 @@ def build_agent_hooks(trace_data: AgentTraceData):
 
         return {}
 
+    post_tool_hooks = [HookMatcher(hooks=[on_tool_use])]
+    if extra_post_hooks:
+        post_tool_hooks.extend(extra_post_hooks)
+
     return {
-        "PostToolUse": [
-            HookMatcher(hooks=[on_tool_use]),
-        ],
+        "PostToolUse": post_tool_hooks,
     }
