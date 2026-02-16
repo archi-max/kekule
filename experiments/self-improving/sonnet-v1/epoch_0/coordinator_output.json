@@ -1,0 +1,41 @@
+{
+  "lessons_text": "## Test Execution Before Submission\n- Always verify that target tests can actually RUN before claiming a fix works. If tests fail to execute due to import errors, missing modules, or fixture failures, resolve these blockers first. A patch that passes static analysis but fails at test runtime is not complete.\n\n## Correct Modification Location\n- Trace the execution path from user input to buggy behavior before modifying code. When an issue mentions a CLI flag (e.g., --recursive), find where that flag is both parsed AND applied. The fix often belongs in a different module than where symptoms appear.\n- When modifying file enumeration or discovery logic, test with both package directories (containing __init__.py) and non-package directories. Different code paths often handle these cases differently.\n\n## Avoid Replacing Library Functions\n- Prefer minimal targeted fixes over replacing standard library functions or well-tested utility functions with custom implementations. Custom replacements often have subtle semantic differences that cause widespread regressions.\n\n## Boolean and Collection Edge Cases\n- Distinguish between None (missing), empty collection [], and non-empty collection. Use explicit `is None` or `len(x) == 0` checks rather than `if not x:` when the semantic difference matters.\n- When filtering collections or paths, test both positive matches (should be filtered) AND negative matches (should pass through) to catch over-aggressive filtering.\n\n## Test Environment Validation\n- If multiple tests fail with identical errors (e.g., same import error or unknown symbol error), check whether this indicates an environment/dependency issue rather than a patch problem. Address environment issues before debugging patch logic.",
+  "oracle_adjustments": {
+    "target_test_executor": {
+      "description": "Run the exact FAIL_TO_PASS tests before patch submission to verify both that tests run and that they pass",
+      "agent_prompt": "You are a Test Execution Oracle. Your job is to run the exact target tests and verify they work.\n\n## Steps\n1. Identify the exact test(s) listed in FAIL_TO_PASS for this issue\n2. First, try to import the test file to check for import errors\n3. Run the specific tests with pytest -xvs or the appropriate test runner\n4. If tests fail to START (import errors, missing modules, fixture failures), report this as CRITICAL\n5. If tests run but FAIL, report the actual vs expected output\n6. If tests PASS, report success\n\n## Output Format\nWrite a report with:\n- TEST_RUN_STATUS: PASSED | FAILED | DID_NOT_RUN\n- ERROR_TYPE: (if failed) IMPORT_ERROR | FIXTURE_ERROR | ASSERTION_ERROR | OTHER\n- DETAILS: what happened\n- BLOCKING: yes/no - should this block patch submission?",
+      "execution_mode": "bash",
+      "weight": 3.0,
+      "enabled": true
+    },
+    "minimal_reproduction": {
+      "description": "Create and run a minimal standalone script that reproduces the issue and verifies the fix",
+      "agent_prompt": "You are a Reproduction Oracle. Your job is to verify the fix works with a minimal test.\n\n## Steps\n1. Read the issue description to understand the buggy behavior\n2. Create a minimal Python script (under 50 lines) that:\n   - Imports only what's needed from the library\n   - Recreates the problematic scenario\n   - Asserts the expected fixed behavior\n3. Run the script and report results\n\n## Important\n- Do NOT rely on test fixtures or pytest infrastructure\n- Keep the script simple and self-contained\n- If the script can't import the library, report this as a dependency issue\n- Write output to stdout so it can be captured",
+      "execution_mode": "bash",
+      "weight": 2.0,
+      "enabled": true
+    },
+    "regression_quick_check": {
+      "description": "Run a quick sanity check on the modified module to catch obvious regressions",
+      "agent_prompt": "You are a Regression Oracle. Your job is to catch obvious breakages.\n\n## Steps\n1. Identify which files were modified by the patch\n2. For each modified file:\n   - Try importing the module\n   - Run any existing tests in that module's test file\n   - If the test file has 20+ tests, run just the first 5-10 and a random sample\n3. Report any failures\n\n## Critical\n- If MORE than 10 tests fail, this likely indicates a fundamental issue with the patch\n- Look for patterns: if failures share a common error message, investigate the root cause\n- Distinguish between patch-caused failures and pre-existing/environment issues",
+      "execution_mode": "bash",
+      "weight": 1.5,
+      "enabled": true
+    },
+    "unit_test": {
+      "prompt_addendum": "Include edge cases for: (1) None vs empty collection, (2) single files vs directories with __init__.py, (3) both filter matches and non-matches. Ensure tests can actually import the target modules before generating complex test cases."
+    },
+    "behavioral_assertion": {
+      "prompt_addendum": "Before running behavioral checks, verify the target module can be imported without errors. If imports fail, report this rather than proceeding with checks that will all fail."
+    }
+  },
+  "composition": {
+    "num_coding_agents": 3,
+    "num_oracle_rounds": 3,
+    "oracle_parallelism": "sequential",
+    "planner_guidance": "Include a dedicated test_executor role that runs the actual FAIL_TO_PASS tests before the swarm completes. This role should verify tests can run, not just that code looks correct."
+  },
+  "analysis": "## Epoch 0 Failure Analysis\n\n### Pattern 1: Analyst Failure (django__django-16379)\nThe analyst failed to produce structured output, resulting in no patch. Cost: $0, Turns: 0. This suggests an early failure in the analysis pipeline, possibly due to malformed output or timeout. No specific lessons to extract since no work was done.\n\n### Pattern 2: Wrong File + Semantic Change (pylint-dev__pylint-7080)\nThe swarm modified expand_modules.py with a custom _get_module_files() function that enforces __init__.py requirements by default, breaking namespace package support. 116 tests regressed.\n\nKey issues:\n- The custom function has different semantics than the original modutils.get_module_files()\n- The patch handles .py files but not package directories that should be excluded wholesale\n- The target test 'test_ignore_path_recursive_current_dir' doesn't exist in the test suite\n\nThe root cause is that the swarm didn't run the target test (which would have revealed it doesn't exist) and didn't run the regression suite (which would have caught the 116 failures early).\n\n### Pattern 3: Test Never Ran (sphinx-doc__sphinx-8595)\nThe patch looks correct: distinguishing `self.__all__ is None` from `len(self.__all__) == 0`. However, the test failed to execute at all due to ModuleNotFoundError for 'roman' during fixture setup.\n\nThe swarm:\n- Created oracle tests in oracle_tests/ but evaluation expected tests/test_ext_autodoc_automodule.py\n- Never ran the actual target test to verify the fix works\n- Relied on code analysis alone without runtime verification\n\n### Test Set Performance\nTest: 1/2 (50%) vs Train: 0/3 (0%). The test set outperformed train, suggesting the train failures may be due to environment/test execution issues rather than fundamental approach problems.\n\n### Oracle Effectiveness\nCurrent oracles generate new tests but don't run existing target tests. The key gap is verification that the FAIL_TO_PASS tests actually pass. Adding oracles that:\n1. Run the exact target tests\n2. Create minimal reproduction scripts\n3. Do quick regression checks on modified modules\n\nshould catch these failure patterns.\n\n### Recommendations\n1. **Critical**: Add target_test_executor oracle with high weight (3.0) to run FAIL_TO_PASS tests\n2. **Critical**: Add minimal_reproduction oracle to verify fix without test infrastructure\n3. **Important**: Increase oracle rounds from 2 to 3 for more verification cycles\n4. **Important**: Switch to sequential oracle mode for thorough checking\n5. **Medium**: Update planner guidance to include test_executor role",
+  "train_score": 0.0,
+  "test_score": 0.5
+}

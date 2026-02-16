@@ -1,0 +1,57 @@
+{
+  "lessons_text": "\n\n### Epoch 0 Lessons\n## Test Execution Before Submission\n- Always verify that target tests can actually RUN before claiming a fix works. If tests fail to execute due to import errors, missing modules, or fixture failures, resolve these blockers first. A patch that passes static analysis but fails at test runtime is not complete.\n\n## Correct Modification Location\n- Trace the execution path from user input to buggy behavior before modifying code. When an issue mentions a CLI flag (e.g., --recursive), find where that flag is both parsed AND applied. The fix often belongs in a different module than where symptoms appear.\n- When modifying file enumeration or discovery logic, test with both package directories (containing __init__.py) and non-package directories. Different code paths often handle these cases differently.\n\n## Avoid Replacing Library Functions\n- Prefer minimal targeted fixes over replacing standard library functions or well-tested utility functions with custom implementations. Custom replacements often have subtle semantic differences that cause widespread regressions.\n\n## Boolean and Collection Edge Cases\n- Distinguish between None (missing), empty collection [], and non-empty collection. Use explicit `is None` or `len(x) == 0` checks rather than `if not x:` when the semantic difference matters.\n- When filtering collections or paths, test both positive matches (should be filtered) AND negative matches (should pass through) to catch over-aggressive filtering.\n\n## Test Environment Validation\n- If multiple tests fail with identical errors (e.g., same import error or unknown symbol error), check whether this indicates an environment/dependency issue rather than a patch problem. Address environment issues before debugging patch logic.",
+  "oracle_strategies": [
+    {
+      "name": "unit_test",
+      "description": "Generate focused pytest unit tests that verify the fix handles the reported behavior",
+      "agent_prompt": "\nYou are an Oracle Generator for SWE-bench verification.\n\n## Your Mission\nGiven a GitHub issue (problem statement), generate pytest tests that verify whether\na fix correctly addresses the reported behavior.\n\n## Workflow\n1. Read the problem statement carefully. Identify what behavior is broken.\n2. Explore the codebase to understand the relevant modules, classes, and functions.\n3. Write pytest tests that:\n   - Test the specific behavior described in the issue\n   - Include at least one test for the main fix\n   - Include at least one edge case test\n4. Write the test file to the specified output path.\n\n## Test Quality\n- Tests MUST be runnable with `pytest <file>` (no extra flags)\n- Tests MUST import from the codebase correctly (verify import paths exist)\n- Tests MUST have clear assertion messages\n- Tests SHOULD NOT modify the codebase (read-only verification)\n- Tests SHOULD be focused on the issue, not general functionality\n- Do NOT use external fixtures unless verified in conftest.py\n- Do NOT make network calls\n",
+      "execution_mode": "pytest",
+      "enabled": true,
+      "weight": 1.0,
+      "prompt_addendum": "Include edge cases for: (1) None vs empty collection, (2) single files vs directories with __init__.py, (3) both filter matches and non-matches. Ensure tests can actually import the target modules before generating complex test cases."
+    },
+    {
+      "name": "regression_check",
+      "description": "Generate tests that verify the fix doesn't break existing functionality",
+      "agent_prompt": "\nYou are a Regression Oracle Generator for SWE-bench verification.\n\n## Your Mission\nGiven a GitHub issue, generate pytest tests that verify the fix does NOT break\nexisting functionality in the affected modules.\n\n## Workflow\n1. Read the problem statement to identify which modules are affected.\n2. Explore the codebase to find existing public APIs and usage patterns.\n3. Write pytest tests that verify:\n   - Existing functionality still works after the fix\n   - Related methods/functions aren't broken\n   - Type contracts are maintained\n4. Write the test file to the specified output path.\n\n## Test Quality\n- Focus on EXISTING behavior, not the new fix\n- Test the public API of affected modules\n- Use real module imports (verify they exist)\n- Tests should pass on BOTH the original and fixed code\n",
+      "execution_mode": "pytest",
+      "enabled": true,
+      "weight": 1.0,
+      "prompt_addendum": ""
+    },
+    {
+      "name": "behavioral_assertion",
+      "description": "Generate simple bash-based behavioral checks (import, call, assert)",
+      "agent_prompt": "\nYou are a Behavioral Oracle Generator for SWE-bench verification.\n\n## Your Mission\nGiven a GitHub issue, generate lightweight behavioral checks as bash scripts.\nThese are quick smoke tests that verify basic correctness.\n\n## Workflow\n1. Read the problem statement.\n2. Explore the codebase to understand imports and module structure.\n3. Write a bash script that:\n   - Uses `python -c \"...\"` to import and test key behaviors\n   - Exits 0 if all checks pass, non-zero otherwise\n   - Prints clear messages about what passed/failed\n4. Write the script to the specified output path.\n\n## Script Quality\n- Each check should be a single python -c command\n- Use set -e to fail fast\n- Print descriptive messages before each check\n- Keep it under 20 checks -- focus on the most important behaviors\n",
+      "execution_mode": "bash",
+      "enabled": true,
+      "weight": 1.0,
+      "prompt_addendum": "Before running behavioral checks, verify the target module can be imported without errors. If imports fail, report this rather than proceeding with checks that will all fail."
+    },
+    {
+      "name": "minimal_reproduction",
+      "description": "Create and run a minimal standalone script that reproduces the issue and verifies the fix",
+      "agent_prompt": "You are a Reproduction Oracle. Your job is to verify the fix works with a minimal test.\n\n## Steps\n1. Read the issue description to understand the buggy behavior\n2. Create a minimal Python script (under 50 lines) that:\n   - Imports only what's needed from the library\n   - Recreates the problematic scenario\n   - Asserts the expected fixed behavior\n3. Run the script and report results\n\n## Important\n- Do NOT rely on test fixtures or pytest infrastructure\n- Keep the script simple and self-contained\n- If the script can't import the library, report this as a dependency issue\n- Write output to stdout so it can be captured",
+      "execution_mode": "bash",
+      "enabled": true,
+      "weight": 2.0,
+      "prompt_addendum": ""
+    },
+    {
+      "name": "regression_quick_check",
+      "description": "Run a quick sanity check on the modified module to catch obvious regressions",
+      "agent_prompt": "You are a Regression Oracle. Your job is to catch obvious breakages.\n\n## Steps\n1. Identify which files were modified by the patch\n2. For each modified file:\n   - Try importing the module\n   - Run any existing tests in that module's test file\n   - If the test file has 20+ tests, run just the first 5-10 and a random sample\n3. Report any failures\n\n## Critical\n- If MORE than 10 tests fail, this likely indicates a fundamental issue with the patch\n- Look for patterns: if failures share a common error message, investigate the root cause\n- Distinguish between patch-caused failures and pre-existing/environment issues",
+      "execution_mode": "bash",
+      "enabled": true,
+      "weight": 1.5,
+      "prompt_addendum": ""
+    }
+  ],
+  "composition": {
+    "num_coding_agents": 3,
+    "num_oracle_rounds": 3,
+    "oracle_parallelism": "sequential",
+    "planner_guidance": "Include a dedicated test_executor role that runs the actual FAIL_TO_PASS tests before the swarm completes. This role should verify tests can run, not just that code looks correct."
+  },
+  "prompt_overrides": []
+}

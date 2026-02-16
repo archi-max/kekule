@@ -1,0 +1,44 @@
+[
+  {
+    "instance_id": "django__django-16379",
+    "root_cause": "Analyst failed to produce structured output",
+    "what_swarm_missed": [],
+    "behaviors_to_fix": [],
+    "test_analysis": "",
+    "suggestion": "",
+    "confidence": 0.0
+  },
+  {
+    "instance_id": "pylint-dev__pylint-7080",
+    "root_cause": "The patch replaced astroid's modutils.get_module_files() with a custom _get_module_files() that enforces __init__.py requirements by default, breaking namespace package support and causing 116 test regressions",
+    "what_swarm_missed": [
+      "The custom _get_module_files() function requires __init__.py files (line 102) unless list_all=True, but the original modutils.get_module_files() has different semantics for discovering Python files",
+      "The patch broke non-recursive file discovery - many tests don't use --recursive=y but still failed due to the changed file enumeration logic",
+      "The test name 'test_ignore_path_recursive_current_dir' doesn't exist in the test suite - the swarm was optimizing for a non-existent test",
+      "The original issue is about ignore-paths not being respected in recursive mode, but the actual bug is in pylinter.py's _discover_files() method (lines 600-620), not in expand_modules.py"
+    ],
+    "behaviors_to_fix": [
+      "When using --recursive=y, pylint must check ignore_list_paths_re patterns against discovered Python files before yielding them",
+      "The ignore-paths regex patterns from pyproject.toml (e.g., '^src/gen/.*$') must be applied to full file paths during recursive directory traversal"
+    ],
+    "test_analysis": "The single target test 'test_ignore_path_recursive_current_dir' does not exist in the test suite, suggesting a configuration error. The 116 regressions (test_pkginfo, test_all, test_no_ext_file, etc.) all failed because the custom _get_module_files() enforces package structure requirements that broke normal file discovery. These tests expect pylint to work on individual files and non-package directories, but the patch made expand_modules() return empty results for non-package code.",
+    "suggestion": "The fix should target pylinter.py's _discover_files() method instead of expand_modules.py. At line 617 where individual .py files are yielded, add a check: 'if not _is_ignored_file(file, self.config.ignore, self.config.black_list_re, self.config.ignore_paths):'. Do not replace modutils.get_module_files(). An oracle that verifies the test name exists and runs the full test_self.py module (not just target tests) would have caught both the missing test and the 116 regressions.",
+    "confidence": 0.95
+  },
+  {
+    "instance_id": "sphinx-doc__sphinx-8595",
+    "root_cause": "The test file tests/test_ext_autodoc_automodule.py::test_empty_all was never created in the expected location",
+    "what_swarm_missed": [
+      "The evaluation system expected a test at tests/test_ext_autodoc_automodule.py::test_empty_all but the swarm created tests in oracle_tests/ directory instead",
+      "The swarm did not realize it needed to create the standard pytest test file that the evaluation would check",
+      "The patch only fixes the want_all=True case but the else branch (want_all=False) at lines 1090-1101 also needs to filter members when __all__ is empty"
+    ],
+    "behaviors_to_fix": [
+      "When :members: directive is used without arguments and __all__=[], no members should be documented (this IS fixed by the patch)",
+      "When specific members are explicitly requested with :members: foo and __all__=[], those members should be filtered out (this is NOT fixed by the patch)"
+    ],
+    "test_analysis": "The evaluation expected to find and run tests/test_ext_autodoc_automodule.py::test_empty_all but this file and test do not exist. The swarm created comprehensive oracle tests in oracle_tests/unit_test/test_empty_all.py with multiple test cases, but these were not in the location the evaluation system checked. Additionally, even if the test existed, the test at line 70-90 (test_empty_all_list_with_specific_members) would fail because the patch doesn't handle the want_all=False case where specific members are requested.",
+    "suggestion": "Create tests/test_ext_autodoc_automodule.py with a test_empty_all function following the pattern of existing test files in tests/. Also extend the patch to handle the want_all=False case at lines 1090-1101 by adding a check: if self.__all__ is not None and len(self.__all__) == 0, return False, [] before processing memberlist. An oracle that verifies test file paths match expected patterns (tests/test_*.py not oracle_tests/) would have caught the location mismatch.",
+    "confidence": 0.95
+  }
+]
