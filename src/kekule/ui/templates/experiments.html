@@ -27,6 +27,16 @@
                 <span>{{ exp.train_ids|length }} train / {{ exp.test_ids|length }} test tasks</span>
                 <span>${{ '%.2f'|format(exp.total_cost) }} total cost</span>
             </div>
+            {% if exp.config %}
+            <div class="meta" style="margin-top: 4px;">
+                {% if exp.config.model %}<span>Model: {{ exp.config.model }}</span>{% endif %}
+                {% if exp.config.solver %}<span>Solver: {{ exp.config.solver }}</span>{% endif %}
+                {% if exp.config.swarm_agents %}<span>Swarm size: {{ exp.config.swarm_agents }}</span>{% endif %}
+                {% if exp.config.num_coding_agents %}<span>Coding agents: {{ exp.config.num_coding_agents }}</span>{% endif %}
+                {% if exp.config.oracle_rounds %}<span>Oracle rounds: {{ exp.config.oracle_rounds }}</span>{% endif %}
+                {% if exp.config.oracle_parallelism %}<span>Oracle: {{ exp.config.oracle_parallelism }}</span>{% endif %}
+            </div>
+            {% endif %}
         </div>
         <div style="text-align: right;">
             <div style="font-size: 28px; font-weight: 600;">

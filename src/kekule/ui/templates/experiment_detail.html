@@ -16,6 +16,16 @@
             <span>{{ exp.num_epochs }} epoch{{ 's' if exp.num_epochs != 1 else '' }}</span>
             <span>${{ '%.2f'|format(exp.total_cost) }} total</span>
         </div>
+        {% if exp.config %}
+        <div class="meta" style="margin-top: 4px;">
+            {% if exp.config.model %}<span>Model: <strong style="color: var(--text);">{{ exp.config.model }}</strong></span>{% endif %}
+            {% if exp.config.solver %}<span>Solver: <strong style="color: var(--text);">{{ exp.config.solver }}</strong></span>{% endif %}
+            {% if exp.config.swarm_agents %}<span>Swarm size: <strong style="color: var(--text);">{{ exp.config.swarm_agents }}</strong></span>{% endif %}
+            {% if exp.config.num_coding_agents %}<span>Coding agents: <strong style="color: var(--text);">{{ exp.config.num_coding_agents }}</strong></span>{% endif %}
+            {% if exp.config.oracle_rounds %}<span>Oracle rounds: <strong style="color: var(--text);">{{ exp.config.oracle_rounds }}</strong></span>{% endif %}
+            {% if exp.config.oracle_parallelism %}<span>Oracle: <strong style="color: var(--text);">{{ exp.config.oracle_parallelism }}</strong></span>{% endif %}
+        </div>
+        {% endif %}
     </div>
     <div style="text-align: right;">
         <div style="font-size: 32px; font-weight: 600;">

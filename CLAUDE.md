@@ -43,6 +43,24 @@ uv run kekule-bench --problems 1 --agents-per-problem 1 --iterations 1 --skip-ev
 # Run with a custom solver and experiment name
 uv run kekule-bench --solver my_solver --experiment-name "my-experiment" --problems 2 --skip-eval
 
+# Run the self-improving oracle swarm
+uv run kekule-improve --epochs 2 --problems 5 --skip-eval
+
+# Run with explicit train/test split and Docker eval
+uv run kekule-improve \
+  --train-ids django__django-16379 pylint-dev__pylint-7080 \
+  --test-ids django__django-14915 psf__requests-2317 \
+  --epochs 3 --experiment-name "my-experiment"
+
+# Resume a crashed run from a specific epoch
+uv run kekule-improve --start-epoch 1 --epochs 1 --experiment-name "my-experiment" \
+  --train-ids django__django-16379 pylint-dev__pylint-7080 \
+  --test-ids django__django-14915 psf__requests-2317
+
+# Export and customize prompts
+uv run kekule-improve --export-prompts ./my-prompts/
+uv run kekule-improve --prompts-dir ./my-prompts/ --epochs 2
+
 # Run the standalone solver on a question file
 uv run python -m kekule.solver.main solve input/question.json
 ```

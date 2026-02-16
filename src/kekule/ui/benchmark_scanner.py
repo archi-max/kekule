@@ -66,6 +66,12 @@ class BenchmarkRun:
     solver: str | None = None
     cost_usd: float | None = None
     duration_s: float | None = None
+    # Config details
+    agents_per_problem: int | None = None
+    max_agent_turns: int | None = None
+    swarm_agents: int | None = None
+    oracle_rounds: int | None = None
+    dataset: str | None = None
 
     def __post_init__(self):
         self.total = len(self.tasks)
@@ -226,6 +232,26 @@ def _enrich_run_metadata(run: BenchmarkRun, base_dir: Path) -> None:
         run.swarm_design = first.get("swarm_design")
         run.roles = first.get("roles")
         run.perturbation_intensity = first.get("perturbation_intensity")
+        run.swarm_agents = first.get("swarm_agents")
+        run.oracle_rounds = first.get("oracle_rounds")
+
+        # Derive solver name from model_name_or_path (e.g. "kekule-oracle-swarm-claude-opus-4-5")
+        model_path = first.get("model_name_or_path", "")
+        if model_path.startswith("kekule-"):
+            parts = model_path.split("-")
+            # Find where the model name starts (claude-...)
+            for i, p in enumerate(parts):
+                if p == "claude" and i > 1:
+                    run.solver = "-".join(parts[1:i])
+                    break
+
+        # Count distinct agents per instance to infer agents_per_problem
+        instance_counts: dict[str, int] = {}
+        for r in raw_results:
+            iid = r.get("instance_id", "")
+            instance_counts[iid] = instance_counts.get(iid, 0) + 1
+        if instance_counts:
+            run.agents_per_problem = max(instance_counts.values())
 
         # Build lookup for per-task metadata
         raw_by_id = {r.get("instance_id"): r for r in raw_results}

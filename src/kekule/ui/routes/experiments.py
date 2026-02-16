@@ -143,6 +143,41 @@ def _scan_experiments(results_dir: Path) -> list[dict]:
         # Sort scores by epoch
         scores.sort(key=lambda s: s.get("epoch", 0))
 
+        # Extract config details from first epoch's raw_results
+        exp_config: dict = {}
+        first_epoch_raw = exp_dir / "epoch_0" / "raw_results.json"
+        if first_epoch_raw.exists():
+            try:
+                raw = json.loads(first_epoch_raw.read_text())
+                if raw and isinstance(raw, list):
+                    first = raw[0]
+                    exp_config["model"] = first.get("model_name_or_path", "")
+                    exp_config["swarm_design"] = first.get("swarm_design")
+                    exp_config["swarm_agents"] = first.get("swarm_agents")
+                    exp_config["oracle_rounds"] = first.get("oracle_rounds")
+                    # Derive solver from model_name_or_path
+                    mp = first.get("model_name_or_path", "")
+                    if mp.startswith("kekule-"):
+                        parts = mp.split("-")
+                        for i, p in enumerate(parts):
+                            if p == "claude" and i > 1:
+                                exp_config["solver"] = "-".join(parts[1:i])
+                                break
+            except Exception:
+                pass
+
+        # Extract composition from first epoch config snapshot
+        first_config = exp_dir / "prompt_snapshots" / "epoch_0_config.json"
+        if first_config.exists():
+            try:
+                cfg = json.loads(first_config.read_text())
+                comp = cfg.get("composition", {})
+                exp_config.setdefault("num_coding_agents", comp.get("num_coding_agents"))
+                exp_config.setdefault("oracle_rounds", comp.get("num_oracle_rounds"))
+                exp_config.setdefault("oracle_parallelism", comp.get("oracle_parallelism"))
+            except Exception:
+                pass
+
         experiments.append({
             "name": name,
             "path": str(exp_dir),
@@ -154,6 +189,7 @@ def _scan_experiments(results_dir: Path) -> list[dict]:
             "latest_train_score": scores[-1]["train_score"] if scores else 0,
             "latest_test_score": scores[-1]["test_score"] if scores else 0,
             "total_cost": sum(s.get("total_cost_usd", 0) for s in scores),
+            "config": exp_config,
         })
 
     return sorted(experiments, key=lambda e: e["name"])
