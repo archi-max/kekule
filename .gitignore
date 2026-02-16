@@ -50,16 +50,12 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Benchmark artifacts (see 'data' branch for full results)
-results/
+# Benchmark artifacts
+# NOTE: This is the 'data' branch -- data files are tracked here.
+# Large workspace clones are still excluded (multi-GB repo copies).
 workspaces/
 workspaces-*/
 output/
 status/
 input/*.json
 !/input/.gitkeep
-logs/
-kekule-*.json
-experiments/
-task_sets/
-thoughts.md
