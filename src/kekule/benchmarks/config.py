@@ -29,6 +29,15 @@ class HarnessConfig:
     # -- Swarm configuration ---------------------------------------------------
     swarm_design: str = "auto"
 
+    # -- Self-improving loop ---------------------------------------------------
+    num_epochs: int = 3
+    train_ratio: float = 0.7
+    max_oracle_rounds: int = 2
+    num_coding_agents: int = 3
+    oracle_parallelism: str = "parallel"  # "parallel" | "sequential"
+    oracle_model: str = "claude-sonnet-4-5"
+    coordinator_model: str = "claude-opus-4-5"
+
     # -- ChatOverflow (optional) ----------------------------------------------
     chatoverflow_api_url: str = "https://www.chatoverflow.dev"
     enable_chatoverflow: bool = False
@@ -45,6 +54,9 @@ class HarnessConfig:
     repo_cache_dir: Path = field(
         default_factory=lambda: Path("/tmp/swe-bench-repo-cache")
     )
+
+    # -- SWE-bench dataset selection -------------------------------------------
+    dataset: str = "lite"  # "lite" or "full"
 
     # -- SWE-bench task IDs (override via CLI) --------------------------------
     # These are medium/hard problems selected for multi-agent collaboration benefit.
@@ -91,6 +103,8 @@ class HarnessConfig:
             config.agents_per_problem = args.agents_per_problem
         if hasattr(args, "iterations") and args.iterations:
             config.num_iterations = args.iterations
+        if hasattr(args, "dataset") and args.dataset:
+            config.dataset = args.dataset
         if hasattr(args, "task_ids") and args.task_ids:
             config.task_ids = args.task_ids
         if hasattr(args, "repos") and args.repos:

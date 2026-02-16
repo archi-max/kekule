@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}{{ run.run_id }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="/benchmarks">Benchmarks</a>
+    <span class="sep">/</span>
+    <span>{{ run.run_id }}</span>
+</div>
+
+<h1>{{ run.run_id }}</h1>
+
+<div class="card" style="margin-bottom: 24px;">
+    <div class="meta">
+        <span>Model: <strong style="color: var(--text);">{{ run.model }}</strong></span>
+        {% if run.swarm_design %}<span>Design: <strong style="color: var(--text);">{{ run.swarm_design }}</strong></span>{% endif %}
+        {% if run.perturbation_intensity is not none and run.perturbation_intensity > 0 %}
+            <span>Perturbation: <strong style="color: var(--text);">{{ "%.2f"|format(run.perturbation_intensity) }}</strong></span>
+        {% endif %}
+        {% if run.cost_usd %}<span>Cost: <strong style="color: var(--text);">${{ "%.2f"|format(run.cost_usd) }}</strong></span>{% endif %}
+        {% if run.duration_s %}<span>Duration: <strong style="color: var(--text);">{{ "%.0f"|format(run.duration_s) }}s</strong></span>{% endif %}
+    </div>
+    {% if run.roles %}
+    <div class="meta" style="margin-top: 6px;">
+        Roles: <strong style="color: var(--text);">{{ run.roles|join(', ') }}</strong>
+    </div>
+    {% endif %}
+    <div style="display: flex; gap: 24px; margin-top: 12px;">
+        <div>
+            <span style="font-size: 32px; font-weight: 700; color: var(--green);">{{ run.passed }}</span>
+            <span class="meta"> passed</span>
+        </div>
+        <div>
+            <span style="font-size: 32px; font-weight: 700; color: var(--red);">{{ run.failed }}</span>
+            <span class="meta"> failed</span>
+        </div>
+        <div>
+            <span style="font-size: 32px; font-weight: 700;">{{ run.total }}</span>
+            <span class="meta"> total</span>
+        </div>
+        <div>
+            <span style="font-size: 32px; font-weight: 700;">{{ "%.0f"|format(run.pass_rate) }}%</span>
+            <span class="meta"> pass rate</span>
+        </div>
+    </div>
+    <div class="progress-bar" style="margin-top: 12px;">
+        <div class="progress-bar-fill" style="width: {{ run.pass_rate }}%"></div>
+    </div>
+</div>
+
+<h2>Tasks</h2>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 30px;"></th>
+            <th>Instance ID</th>
+            <th>Status</th>
+            <th>Patch</th>
+            <th>Tests Passed</th>
+            <th>FAIL_TO_PASS</th>
+            <th>PASS_TO_PASS</th>
+            <th>Turns</th>
+            <th>Cost</th>
+            <th>Time</th>
+            <th>Roles</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for task in run.tasks %}
+        {% set f2p = task.tests_status.get('FAIL_TO_PASS', {}) %}
+        {% set p2p = task.tests_status.get('PASS_TO_PASS', {}) %}
+        {% set f2p_success = f2p.get('success', []) %}
+        {% set f2p_failure = f2p.get('failure', []) %}
+        {% set p2p_success = p2p.get('success', []) %}
+        {% set p2p_failure = p2p.get('failure', []) %}
+        {% set f2f = task.tests_status.get('FAIL_TO_FAIL', {}) %}
+        {% set p2f = task.tests_status.get('PASS_TO_FAIL', {}) %}
+        {% set total_passed = f2p_success|length + p2p_success|length + f2f.get('success', [])|length + p2f.get('success', [])|length %}
+        {% set total_failed = f2p_failure|length + p2p_failure|length + f2f.get('failure', [])|length + p2f.get('failure', [])|length %}
+        {% set total_tests = total_passed + total_failed %}
+        <tr>
+            <td>
+                <span class="expandable-toggle" onclick="toggleRow('row-{{ loop.index }}', this)"></span>
+            </td>
+            <td>
+                <a href="/benchmarks/{{ run.run_id }}/{{ task.instance_id }}">{{ task.instance_id }}</a>
+            </td>
+            <td>
+                {% if task.resolved %}
+                    <span class="badge badge-pass">PASS</span>
+                {% else %}
+                    <span class="badge badge-fail">FAIL</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if task.patch_applied %}
+                    <span style="color: var(--green);">Applied</span>
+                {% elif task.patch_exists %}
+                    <span style="color: var(--yellow);">Exists</span>
+                {% else %}
+                    <span style="color: var(--red);">None</span>
+                {% endif %}
+            </td>
+            <td>
+                <span style="color: {% if total_failed == 0 %}var(--green){% else %}var(--text){% endif %};">{{ total_passed }}</span><span class="meta"> / {{ total_tests }}</span>
+            </td>
+            <td>
+                {% set f2p_total = f2p_success|length + f2p_failure|length %}
+                {% if f2p_failure|length > 0 %}
+                    <span style="color: var(--red);">{{ f2p_failure|length }} failed</span><span class="meta"> / {{ f2p_total }}</span>
+                {% elif f2p_total > 0 %}
+                    <span style="color: var(--green);">{{ f2p_total }} fixed</span>
+                {% else %}
+                    <span class="meta">-</span>
+                {% endif %}
+            </td>
+            <td>
+                {% set p2p_total = p2p_success|length + p2p_failure|length %}
+                {% if p2p_failure|length > 0 %}
+                    <span style="color: var(--red);">{{ p2p_failure|length }} regressed</span><span class="meta"> / {{ p2p_total }}</span>
+                {% elif p2p_total > 0 %}
+                    <span style="color: var(--green);">{{ p2p_total }} ok</span>
+                {% else %}
+                    <span class="meta">-</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if task.num_turns is not none %}{{ task.num_turns }}{% else %}<span class="meta">-</span>{% endif %}
+            </td>
+            <td>
+                {% if task.cost_usd is not none %}<span>${{ "%.2f"|format(task.cost_usd) }}</span>{% else %}<span class="meta">-</span>{% endif %}
+            </td>
+            <td>
+                {% if task.duration_s is not none %}
+                    {% set mins = (task.duration_s / 60)|int %}
+                    {% set secs = (task.duration_s % 60)|int %}
+                    <span>{{ mins }}m {{ secs }}s</span>
+                {% else %}
+                    <span class="meta">-</span>
+                {% endif %}
+            </td>
+            <td style="font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ task.roles|join(', ') }}">
+                {% if task.roles %}{{ task.roles|join(', ') }}{% else %}<span class="meta">-</span>{% endif %}
+            </td>
+            <td>
+                <a href="/benchmarks/{{ run.run_id }}/{{ task.instance_id }}" class="btn" style="font-size: 12px; padding: 3px 10px;">View Logs</a>
+            </td>
+        </tr>
+        <tr id="row-{{ loop.index }}" style="display: none;">
+            <td colspan="12" style="background: var(--bg); padding: 16px 24px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div>
+                        <h3 style="color: var(--yellow); margin-bottom: 8px;">FAIL_TO_PASS (must fix)</h3>
+                        {% if f2p_success or f2p_failure %}
+                        <ul class="test-list">
+                            {% for t in f2p_success %}
+                            <li class="pass">{{ t }}</li>
+                            {% endfor %}
+                            {% for t in f2p_failure %}
+                            <li class="fail">{{ t }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <span class="meta">No tests</span>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <h3 style="color: var(--text-muted); margin-bottom: 8px;">PASS_TO_PASS (no regressions)</h3>
+                        <span class="meta">{{ p2p_success|length }} passing, {{ p2p_failure|length }} regressed</span>
+                        {% if p2p_failure|length > 0 %}
+                        <ul class="test-list" style="margin-top: 6px;">
+                            {% for t in p2p_failure %}
+                            <li class="fail">{{ t }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if not task.resolved %}
+                <div style="margin-top: 12px;">
+                    <button class="btn" onclick="generateSummary('{{ run.run_id }}', '{{ task.instance_id }}', this)">
+                        Generate AI Summary
+                    </button>
+                    <div id="summary-{{ task.instance_id|replace('__', '-')|replace('/', '-') }}" style="margin-top: 8px;"></div>
+                </div>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleRow(id, toggle) {
+    const row = document.getElementById(id);
+    if (row.style.display === 'none') {
+        row.style.display = 'table-row';
+        toggle.classList.add('open');
+    } else {
+        row.style.display = 'none';
+        toggle.classList.remove('open');
+    }
+}
+
+function generateSummary(runId, instanceId, btn) {
+    const safeId = instanceId.replace(/__/g, '-').replace(/\//g, '-');
+    const container = document.getElementById('summary-' + safeId);
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    container.innerHTML = '<span class="loading">Generating AI summary...</span>';
+
+    fetch('/api/benchmarks/' + runId + '/' + instanceId + '/summary', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.summary) {
+                container.innerHTML = '<div class="summary-box">' + data.summary.replace(/\n/g, '<br>') + '</div>';
+                btn.style.display = 'none';
+            } else if (data.error) {
+                container.innerHTML = '<div class="summary-box" style="border-color: var(--red);">' + data.error + '</div>';
+                btn.disabled = false;
+                btn.textContent = 'Retry AI Summary';
+            }
+        })
+        .catch(err => {
+            container.innerHTML = '<div class="summary-box" style="border-color: var(--red);">Error: ' + err.message + '</div>';
+            btn.disabled = false;
+            btn.textContent = 'Retry AI Summary';
+        });
+}
+</script>
+{% endblock %}

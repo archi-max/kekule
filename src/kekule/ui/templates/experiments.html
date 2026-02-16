@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Experiments{% endblock %}
+
+{% block content %}
+<h1>Self-Improving Experiments</h1>
+<p class="meta" style="margin-bottom: 20px;">
+    Experiments that run multiple epochs of swarm solving with cross-epoch learning.
+    The waypoint coordinator analyzes results and adjusts prompts, oracle strategies, and agent composition.
+</p>
+
+{% if not experiments %}
+<div class="card">
+    <p class="meta">No experiments found. Run one with:</p>
+    <pre style="margin-top: 8px; padding: 12px; background: var(--bg); border-radius: 4px; font-size: 13px;">kekule-improve --solver perturbation_swarm --problems 5 --epochs 3</pre>
+</div>
+{% endif %}
+
+{% for exp in experiments %}
+<a href="/experiments/{{ exp.name }}" style="text-decoration: none; color: inherit;">
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h2 style="margin-bottom: 4px;">{{ exp.name }}</h2>
+            <div class="meta">
+                <span>{{ exp.num_epochs }} epoch{{ 's' if exp.num_epochs != 1 else '' }}</span>
+                <span>{{ exp.train_ids|length }} train / {{ exp.test_ids|length }} test tasks</span>
+                <span>${{ '%.2f'|format(exp.total_cost) }} total cost</span>
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 28px; font-weight: 600;">
+                <span style="color: var(--green);">{{ '%.0f'|format(exp.latest_train_score * 100) }}%</span>
+                <span style="color: var(--text-muted); font-size: 14px; margin: 0 4px;">/</span>
+                <span style="color: var(--blue);">{{ '%.0f'|format(exp.latest_test_score * 100) }}%</span>
+            </div>
+            <div class="meta">train / test</div>
+        </div>
+    </div>
+
+    {% if exp.scores|length > 1 %}
+    <div style="margin-top: 12px;">
+        <div class="meta" style="margin-bottom: 4px;">Score progression</div>
+        <div style="display: flex; gap: 4px; align-items: end; height: 32px;">
+            {% for s in exp.scores %}
+            <div style="display: flex; flex-direction: column; gap: 2px; flex: 1;">
+                <div style="height: {{ (s.train_score * 28)|int }}px; background: var(--green); border-radius: 2px; min-height: 2px;" title="Train: {{ '%.0f'|format(s.train_score * 100) }}%"></div>
+                <div style="height: {{ (s.test_score * 28)|int }}px; background: var(--blue); border-radius: 2px; min-height: 2px;" title="Test: {{ '%.0f'|format(s.test_score * 100) }}%"></div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="meta" style="display: flex; justify-content: space-between; margin-top: 4px;">
+            <span>Epoch 0</span>
+            <span>Epoch {{ exp.scores|length - 1 }}</span>
+        </div>
+    </div>
+    {% endif %}
+</div>
+</a>
+{% endfor %}
+{% endblock %}

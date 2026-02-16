@@ -75,21 +75,44 @@ src/kekule/
   __init__.py           # Package root
   main.py               # Demo agents (simple query, code analysis)
   solver/               # Expert Solver Agent
-    __init__.py
     agent.py            # Core agent using ClaudeSDKClient
     schemas.py          # Question/SolverResponse dataclasses
     utils.py            # File I/O, status tracking, MCP config loading
     api_client.py       # ChatOverflow API client (optional skill)
   benchmarks/           # SWE-bench Evaluation Harness
-    __init__.py
     harness.py          # Main orchestrator (entry point)
-    solver_agent.py     # Default solver implementation using claude_agent_sdk.query()
+    solver_agent.py     # Default solver using claude_agent_sdk.query()
     config.py           # HarnessConfig dataclass
     task_selector.py    # SWE-bench Lite dataset loader + task picker
     evaluator.py        # Predictions writer + Docker-based evaluation
     tracing.py          # LangFuse tracing + conversation capture
+    swarm_bus.py        # Inter-agent message bus
+    swarm_beads.py      # Task dependency DAG (MCP tools)
+    swarm_hooks.py      # Tool-call interception + auto-coordination
+    failure_analyst.py  # Post-mortem failure diagnosis
+    oracle_bridge.py    # Multi-strategy oracle system
+    waypoint_coordinator.py  # Cross-epoch learning agent
+    prompt_config.py    # Prompt load/save/snapshot
+    task_splitter.py    # Deterministic train/test split
+    self_improving_harness.py  # Outer loop orchestrator
     solvers/            # Pluggable solver modules (--solver flag)
       default.py        # Re-exports solver_agent.solve_swe_task
+      perturbation_swarm.py  # Multi-agent role-based solver
+      oracle_swarm.py   # Swarm + oracle feedback loop
+  oracle/               # Oracle verification system
+    agent.py            # Test generation agent
+    runner.py           # Docker execution engine
+    schemas.py          # Rule, OracleResult models
+    __main__.py         # CLI (generate/run/elicit)
+    elicitor/           # 3-phase rule elicitation pipeline
+  ui/                   # Dashboard backend (FastAPI)
+    app.py              # FastAPI app + routes
+    models.py           # API models
+    state.py            # Persistence
+    benchmark_scanner.py  # Scan evaluation results
+    routes/             # REST endpoints
+    templates/          # Jinja2 HTML templates
+  ui-frontend/          # Dashboard frontend (React + Vite + Tailwind)
 ```
 
 ### Core Concepts
@@ -193,59 +216,6 @@ Create a `.env` file based on `.env.example`:
 | `LANGFUSE_PUBLIC_KEY` | No | LangFuse public key |
 | `LANGFUSE_BASE_URL` | No | LangFuse host URL (e.g., `https://cloud.langfuse.com`) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | No | Enable OTel metrics/events (set to `1`; see `docs/telemetry.md`) |
-
-## SSL / TLS Configuration
-
-This dev environment runs behind an AMD corporate proxy with a custom CA certificate. Python's `ssl` module and tools like `httpx`, `requests`, and `uv` will fail with `CERTIFICATE_VERIFY_FAILED` or `RECORD_LAYER_FAILURE` unless configured correctly.
-
-### System CA bundle
-
-The AMD CA cert is installed at `/etc/ssl/certs/ca-certificates.crt` (copied from `../chatoverflow/.devcontainer/certs/AMD_CA.crt` via `update-ca-certificates`). If it's missing, re-install:
-
-```bash
-sudo cp /workspaces/chatoverflow/.devcontainer/certs/AMD_CA.crt /usr/local/share/ca-certificates/AMD_CA.crt
-sudo update-ca-certificates
-```
-
-### Python / HuggingFace / requests
-
-Set these env vars before running any command that makes HTTPS requests:
-
-```bash
-export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-```
-
-### uv (package manager)
-
-`uv` uses its own TLS stack and ignores `SSL_CERT_FILE`. Use `--native-tls` or install via `uv pip install` (which respects system certs):
-
-```bash
-uv pip install matplotlib numpy --native-tls
-```
-
-### Langfuse
-
-Langfuse's internal `httpx` client does **not** honor `SSL_CERT_FILE`. You must pass a custom `httpx.Client` with the system CA bundle:
-
-```python
-import ssl, httpx
-from langfuse import Langfuse
-
-ssl_ctx = ssl.create_default_context(cafile="/etc/ssl/certs/ca-certificates.crt")
-langfuse = Langfuse(
-    secret_key=..., public_key=..., host=...,
-    httpx_client=httpx.Client(verify=ssl_ctx),
-)
-```
-
-### Docker
-
-Docker socket permissions may need fixing after container restart:
-
-```bash
-sudo chown root:docker /var/run/docker.sock
-```
 
 ## Code Style
 

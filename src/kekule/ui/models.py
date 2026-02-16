@@ -242,3 +242,48 @@ class ElicitRulesRequest(BaseModel):
     repo_path: str
     user_intent: str = ""
     model: str = "claude-sonnet-4-5"
+
+
+# ---------------------------------------------------------------------------
+# Benchmark-related models
+# ---------------------------------------------------------------------------
+
+
+class TestStatusBreakdown(BaseModel):
+    """Breakdown of test results for a category (e.g., FAIL_TO_PASS)."""
+
+    success: list[str] = Field(default_factory=list)
+    failure: list[str] = Field(default_factory=list)
+
+
+class TaskResultOut(BaseModel):
+    """API response for a single task within a benchmark run."""
+
+    instance_id: str
+    resolved: bool
+    patch_applied: bool
+    patch_exists: bool
+    fail_to_pass: TestStatusBreakdown = Field(default_factory=TestStatusBreakdown)
+    pass_to_pass: TestStatusBreakdown = Field(default_factory=TestStatusBreakdown)
+    fail_to_fail: TestStatusBreakdown = Field(default_factory=TestStatusBreakdown)
+    pass_to_fail: TestStatusBreakdown = Field(default_factory=TestStatusBreakdown)
+    has_test_output: bool = False
+    has_agent_logs: bool = False
+
+
+class BenchmarkRunOut(BaseModel):
+    """API response for a benchmark run summary."""
+
+    run_id: str
+    model: str
+    total: int
+    passed: int
+    failed: int
+    pass_rate: float
+    swarm_design: str | None = None
+    roles: list[str] | None = None
+    perturbation_intensity: float | None = None
+    solver: str | None = None
+    cost_usd: float | None = None
+    duration_s: float | None = None
+    tasks: list[TaskResultOut] = Field(default_factory=list)

@@ -28,7 +28,6 @@ env/
 
 # uv
 .uv/
-uv.lock
 
 # IDE
 .vscode/
@@ -51,10 +50,16 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Benchmark artifacts
+# Benchmark artifacts (see 'data' branch for full results)
 results/
 workspaces/
+workspaces-*/
 output/
 status/
 input/*.json
 !/input/.gitkeep
+logs/
+kekule-*.json
+experiments/
+task_sets/
+thoughts.md

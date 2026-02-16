@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .state import AppState
-from .routes import projects, rules, waypoints, swarm, oracle
+from .routes import benchmarks, experiments, projects, rules, waypoints, swarm, oracle
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,11 +62,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(benchmarks.router)
+app.include_router(experiments.router)
 app.include_router(projects.router)
 app.include_router(rules.router)
 app.include_router(waypoints.router)
 app.include_router(swarm.router)
 app.include_router(oracle.router)
+
+
+@app.get("/", include_in_schema=False)
+async def root_redirect():
+    """Redirect root to benchmarks dashboard."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/benchmarks")
 
 
 @app.get("/api/health")
