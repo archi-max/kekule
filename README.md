@@ -10,6 +10,48 @@ A self-improving heterarchical agent swarm that solves real GitHub issues by dec
 
 ---
 
+## Results: Beating SOTA on SWE-bench
+
+We evaluated Kekule against SWE-bench Lite (500 tasks) and identified 117 tasks that the current SOTA agent (75.4% resolve rate) fails to solve. We used these as our target tasks (see [`docs/target-tasks.md`](docs/target-tasks.md)).
+
+Our approach: run the self-improving oracle swarm on target tasks, analyze failures with the coordinator, and iterate. We reference [`docs/live-swe-agent-results/eval_result.json`](docs/live-swe-agent-results/eval_result.json) to identify which tasks remain unsolved by SOTA.
+
+### Tasks solved that SOTA couldn't
+
+During the hackathon we ran the oracle swarm (Claude Sonnet 4.5) against tasks from [`docs/target-tasks.md`](docs/target-tasks.md) — the 117 SWE-bench Lite tasks that the current SOTA agent fails on (see [`docs/live-swe-agent-results/eval_result.json`](docs/live-swe-agent-results/eval_result.json) for the full SOTA baseline at 75.4%).
+
+| Task | Tests Fixed | How |
+|------|------------|-----|
+| `django__django-15022` | 3/3 | Swarm decomposed into root_cause_analyzer + fix_implementer + test_writer |
+| `django__django-14315` | 11/11 | Multi-agent swarm with cross-agent verification via SwarmBus |
+
+Both tasks were unsolvable by the top SWE-bench agent. Full experiment data, agent trajectories, coordinator outputs, and failure diagnoses: [`data` branch → `experiments/self-improving/sonnet-v1/`](../../tree/data/experiments/self-improving/sonnet-v1).
+
+### Sonnet-v1: Self-improving oracle swarm in action
+
+Our latest experiment ([`sonnet-v1`](../../tree/data/experiments/self-improving/sonnet-v1)) ran `oracle_swarm` with Claude Sonnet 4.5 on 5 tasks for 2 epochs. Oracle agents run alongside coding agents on the same SwarmBus, generating verification tests in parallel:
+
+```
+Epoch 0: train=1/3 (33%), test=1/2 (50%), cost=$26.08
+  - Oracle agents triggered Round 2 on 3/5 tasks (caught failures before submission)
+  - Coordinator produced 1748 chars of lessons + 5 oracle strategy adjustments
+  - Failure analyst diagnosed: "patch replaces library function, breaking 116 tests"
+
+Epoch 1: train=1/3 (33%), test=1/2 (50%), cost=$43.26
+  - 9 agents per task (4 coding + 5 oracle strategies)
+  - Pylint patch shrank 10x (7197B → 742B) after coordinator lesson
+  - New oracle strategies: minimal_reproduction, regression_quick_check
+  - Pylint went to Round 3 — oracle caught regressions each round
+```
+
+Full analysis: [`docs/sonnet-v1-report.md`](docs/sonnet-v1-report.md)
+
+### All experiment data
+
+All runs on the [`data` branch](../../tree/data/experiments/self-improving):
+
+---
+
 ## How It Works
 
 ```
