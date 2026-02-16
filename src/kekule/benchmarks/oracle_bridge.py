@@ -236,7 +236,7 @@ async def generate_strategy_artifact(
         permission_mode="bypassPermissions",
         cwd=str(repo_dir),
         allowed_tools=["Read", "Write", "Glob", "Grep", "Bash"],
-        setting_sources=["user"],
+        setting_sources=["project", "local"],
         max_turns=max_turns,
     )
 

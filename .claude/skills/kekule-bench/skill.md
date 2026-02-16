@@ -31,13 +31,11 @@ Before running experiments, ensure:
 
 ```bash
 # 1. Environment variables (source .env or export)
-source /workspaces/kekule/.env  # LANGFUSE keys
-export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+source .env  # ANTHROPIC_API_KEY (required), LANGFUSE keys (optional)
 
-# 2. Docker is running and accessible
-sudo chown root:docker /var/run/docker.sock  # if permission denied
-docker ps  # verify
+# 2. Docker is running and accessible (only needed for evaluation, not for the swarm itself)
+docker ps  # verify Docker daemon is running
+# On Linux: sudo chown root:docker /var/run/docker.sock  # if permission denied
 
 # 3. Check which SWE-bench eval images are available
 docker images --filter "reference=sweb.eval*" --format "{{.Repository}}" | sed 's/sweb.eval.x86_64.//'
@@ -47,19 +45,19 @@ docker images --filter "reference=sweb.eval*" --format "{{.Repository}}" | sed '
 
 ### Self-Improving Loop (recommended)
 
-The main command is `kekule-improve`. Always use `uv run --native-tls` in this environment:
+The main command is `kekule-improve`:
 
 ```bash
-set -a && source /workspaces/kekule/.env && set +a && \
-SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
-REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
-uv run --native-tls python -m kekule.benchmarks.self_improving_harness \
+set -a && source .env && set +a && \
+uv run python -m kekule.benchmarks.self_improving_harness \
   --train-ids <task1> <task2> <task3> \
   --test-ids <task4> <task5> \
   --epochs 2 \
   --experiment-name "my-experiment" \
   2>&1
 ```
+
+> Use `--epochs 2` or more to get the full self-improving loop (failure analysis + waypoint coordinator). With `--epochs 1`, only the swarm runs -- no post-run analysis is generated.
 
 ### Key Flags
 
@@ -70,12 +68,19 @@ uv run --native-tls python -m kekule.benchmarks.self_improving_harness \
 | `--test-ids` | - | Explicit test task IDs (coordinator sees pass/fail only) |
 | `--epochs` | 3 | Number of self-improving epochs |
 | `--start-epoch` | 0 | Resume from this epoch (loads prior lessons/config) |
+| `--max-parallel` | 6 | Max concurrent agents |
+| `--max-turns` | - | Max agent turns per task (unlimited if unset) |
 | `--enable-chatoverflow` | off | Register agents on ChatOverflow Q&A forum |
 | `--skip-eval` | off | Skip Docker evaluation (useful for testing) |
 | `--prompts-dir` | - | Directory with custom prompt overrides |
 | `--export-prompts` | - | Export default prompts to a directory and exit |
 | `--dataset` | `lite` | `lite` (300 tasks) or `full` (2294 tasks) |
-| `--max-parallel` | 6 | Max concurrent agents |
+
+### Important Behavior Notes
+
+- **`--epochs 1` skips post-run analysis.** Failure analysis and the waypoint coordinator only run *between* epochs (to produce lessons, oracle adjustments, and composition changes for the next epoch). With `--epochs 1`, no analysis is generated -- no `failure_diagnoses.json` or `coordinator_output.json`. Use `--epochs 2` or more to get the full self-improving loop with diagnostics.
+- **`--skip-eval` reports 0% scores.** When Docker evaluation is skipped, all scores show 0/N (0.0%). Patches are still generated and oracle checks still run -- the 0% only reflects that the SWE-bench Docker harness didn't verify them. Run eval separately (see "Running Docker Eval Separately" below) to get real scores.
+- **Docker is only required for evaluation**, not for running the swarm itself. You can run experiments with `--skip-eval` without Docker.
 
 ### Solvers
 
