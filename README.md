@@ -18,7 +18,7 @@ Our approach: run the self-improving oracle swarm on target tasks, analyze failu
 
 ### Tasks solved that SOTA couldn't
 
-During the hackathon we ran the oracle swarm (Claude Sonnet 4.5) against tasks from [`docs/target-tasks.md`](docs/target-tasks.md) — the 117 SWE-bench Lite tasks that the current SOTA agent fails on (see [`docs/live-swe-agent-results/eval_result.json`](docs/live-swe-agent-results/eval_result.json) for the full SOTA baseline at 75.4%).
+We identified target tasks by referencing the SOTA results from [openautocoder/live-swe-agent](https://github.com/openautocoder/live-swe-agent) (75.4% on SWE-bench Lite). Their evaluation results ([`docs/live-swe-agent-results/eval_result.json`](docs/live-swe-agent-results/eval_result.json)) showed 117 unresolved tasks — we used these as our target list (see [`docs/target-tasks.md`](docs/target-tasks.md)) and ran our oracle swarm (Claude Sonnet 4.5) against them during the hackathon.
 
 | Task | Tests Fixed | How |
 |------|------------|-----|
