@@ -10,6 +10,44 @@ A self-improving heterarchical agent swarm that solves real GitHub issues by dec
 
 ---
 
+## Results: Beating SOTA on SWE-bench
+
+### Targeting tasks SOTA can't solve
+
+We referenced the SOTA results from [openautocoder/live-swe-agent](https://github.com/openautocoder/live-swe-agent) on SWE-bench Verified (75.4% resolve rate). Their evaluation results ([`docs/live-swe-agent-results/eval_result.json`](docs/live-swe-agent-results/eval_result.json)) showed 117 unresolved tasks. We selected a subset of these as our target list (see [`docs/target-tasks.md`](docs/target-tasks.md)).
+
+During the hackathon, we ran our perturbation swarm on a handful of these target tasks and solved 2 that the SOTA agent couldn't:
+
+| Task | Tests Fixed | How |
+|------|------------|-----|
+| `django__django-15022` | 3/3 | Swarm decomposed into root_cause_analyzer + fix_implementer + test_writer |
+| `django__django-14315` | 11/11 | Multi-agent swarm with cross-agent verification via SwarmBus |
+
+### Sonnet-v1: Self-improving oracle swarm (5 tasks, 2 epochs)
+
+We then built the self-improving loop and ran our first end-to-end experiment ([`sonnet-v1`](../../tree/data/experiments/self-improving/sonnet-v1)) with Claude Sonnet 4.5 on **5 tasks** (3 train + 2 test) for 2 epochs. This is a small-scale proof of concept — we haven't yet run at scale across the full target list. Oracle agents run alongside coding agents on the same SwarmBus, generating verification tests in parallel:
+
+```
+Epoch 0: train=1/3 (33%), test=1/2 (50%), cost=$26.08
+  - Oracle agents triggered Round 2 on 3/5 tasks (caught failures before submission)
+  - Coordinator produced 1748 chars of lessons + 5 oracle strategy adjustments
+  - Failure analyst diagnosed: "patch replaces library function, breaking 116 tests"
+
+Epoch 1: train=1/3 (33%), test=1/2 (50%), cost=$43.26
+  - 9 agents per task (4 coding + 5 oracle strategies)
+  - Pylint patch shrank 10x (7197B → 742B) after coordinator lesson
+  - New oracle strategies: minimal_reproduction, regression_quick_check
+  - Pylint went to Round 3 — oracle caught regressions each round
+```
+
+Full analysis: [`docs/sonnet-v1-report.md`](docs/sonnet-v1-report.md)
+
+### All experiment data
+
+All runs on the [`data` branch](../../tree/data/experiments/self-improving):
+
+---
+
 ## How It Works
 
 ```
@@ -137,26 +175,22 @@ uv run kekule-improve --solver oracle_swarm --epochs 3 --problems 10
 
 ## Dashboard UI
 
-A full-stack web app for monitoring experiments and driving agent development.
+A web UI for browsing experiment results, failure diagnoses, and score progression across epochs.
 
-### Backend (FastAPI)
-
-```bash
-cd src/kekule/ui
-uv run uvicorn app:app --reload --port 8000
-```
-
-Routes: projects, rules, waypoints, swarm status, oracle execution, benchmark results.
-
-### Frontend (React + Vite + Tailwind)
+### Start the dashboard
 
 ```bash
-cd src/kekule/ui-frontend
-npm install
-npm run dev
+uv run python3 -m uvicorn kekule.ui.app:app --reload --port 8000
 ```
 
-Pages: project list, waypoint graph, agent monitor, benchmark results, experiment detail.
+Then visit:
+
+| Route | Description |
+|-------|-------------|
+| `/experiments` | List all self-improving experiments with score progression |
+| `/experiments/<name>` | Epoch details, coordinator output, failure diagnoses |
+| `/benchmarks` | Standalone benchmark run results |
+| `/api/experiments` | JSON API for programmatic access |
 
 ---
 

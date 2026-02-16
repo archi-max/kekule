@@ -13,12 +13,18 @@
 <div class="card" style="margin-bottom: 24px;">
     <div class="meta">
         <span>Model: <strong style="color: var(--text);">{{ run.model }}</strong></span>
+        {% if run.solver %}<span>Solver: <strong style="color: var(--text);">{{ run.solver }}</strong></span>{% endif %}
         {% if run.swarm_design %}<span>Design: <strong style="color: var(--text);">{{ run.swarm_design }}</strong></span>{% endif %}
         {% if run.perturbation_intensity is not none and run.perturbation_intensity > 0 %}
             <span>Perturbation: <strong style="color: var(--text);">{{ "%.2f"|format(run.perturbation_intensity) }}</strong></span>
         {% endif %}
         {% if run.cost_usd %}<span>Cost: <strong style="color: var(--text);">${{ "%.2f"|format(run.cost_usd) }}</strong></span>{% endif %}
         {% if run.duration_s %}<span>Duration: <strong style="color: var(--text);">{{ "%.0f"|format(run.duration_s) }}s</strong></span>{% endif %}
+    </div>
+    <div class="meta" style="margin-top: 6px;">
+        {% if run.agents_per_problem %}<span>Agents/problem: <strong style="color: var(--text);">{{ run.agents_per_problem }}</strong></span>{% endif %}
+        {% if run.swarm_agents %}<span>Swarm agents: <strong style="color: var(--text);">{{ run.swarm_agents }}</strong></span>{% endif %}
+        {% if run.oracle_rounds %}<span>Oracle rounds: <strong style="color: var(--text);">{{ run.oracle_rounds }}</strong></span>{% endif %}
     </div>
     {% if run.roles %}
     <div class="meta" style="margin-top: 6px;">

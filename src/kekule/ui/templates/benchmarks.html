@@ -13,12 +13,18 @@
             <h3 style="margin-bottom: 4px;">{{ run.run_id }}</h3>
             <div class="meta">
                 <span>{{ run.model }}</span>
+                {% if run.solver %}<span>Solver: {{ run.solver }}</span>{% endif %}
                 {% if run.swarm_design %}<span>Design: {{ run.swarm_design }}</span>{% endif %}
                 {% if run.perturbation_intensity is not none and run.perturbation_intensity > 0 %}
                     <span>Perturbation: {{ "%.2f"|format(run.perturbation_intensity) }}</span>
                 {% endif %}
                 {% if run.cost_usd %}<span>${{ "%.2f"|format(run.cost_usd) }}</span>{% endif %}
                 {% if run.duration_s %}<span>{{ "%.0f"|format(run.duration_s) }}s</span>{% endif %}
+            </div>
+            <div class="meta" style="margin-top: 4px;">
+                {% if run.agents_per_problem %}<span>Agents: {{ run.agents_per_problem }}/problem</span>{% endif %}
+                {% if run.swarm_agents %}<span>Swarm size: {{ run.swarm_agents }}</span>{% endif %}
+                {% if run.oracle_rounds %}<span>Oracle rounds: {{ run.oracle_rounds }}</span>{% endif %}
             </div>
             {% if run.roles %}
             <div class="meta" style="margin-top: 4px;">
