@@ -12,24 +12,20 @@ A self-improving heterarchical agent swarm that solves real GitHub issues by dec
 
 ## Results: Beating SOTA on SWE-bench
 
-We evaluated Kekule against SWE-bench Lite (500 tasks) and identified 117 tasks that the current SOTA agent (75.4% resolve rate) fails to solve. We used these as our target tasks (see [`docs/target-tasks.md`](docs/target-tasks.md)).
+### Targeting tasks SOTA can't solve
 
-Our approach: run the self-improving oracle swarm on target tasks, analyze failures with the coordinator, and iterate. We reference [`docs/live-swe-agent-results/eval_result.json`](docs/live-swe-agent-results/eval_result.json) to identify which tasks remain unsolved by SOTA.
+We referenced the SOTA results from [openautocoder/live-swe-agent](https://github.com/openautocoder/live-swe-agent) on SWE-bench Verified (75.4% resolve rate). Their evaluation results ([`docs/live-swe-agent-results/eval_result.json`](docs/live-swe-agent-results/eval_result.json)) showed 117 unresolved tasks. We selected a subset of these as our target list (see [`docs/target-tasks.md`](docs/target-tasks.md)).
 
-### Tasks solved that SOTA couldn't
-
-We identified target tasks by referencing the SOTA results from [openautocoder/live-swe-agent](https://github.com/openautocoder/live-swe-agent) on SWE-bench Verified (500 tasks, 75.4% resolve rate). Their evaluation results ([`docs/live-swe-agent-results/eval_result.json`](docs/live-swe-agent-results/eval_result.json)) showed 117 unresolved tasks. We selected a subset of these as our target list (see [`docs/target-tasks.md`](docs/target-tasks.md)) and ran our oracle swarm against them during the hackathon.
+During the hackathon, we ran our perturbation swarm on a handful of these target tasks and solved 2 that the SOTA agent couldn't:
 
 | Task | Tests Fixed | How |
 |------|------------|-----|
 | `django__django-15022` | 3/3 | Swarm decomposed into root_cause_analyzer + fix_implementer + test_writer |
 | `django__django-14315` | 11/11 | Multi-agent swarm with cross-agent verification via SwarmBus |
 
-Both tasks were unsolvable by the top SWE-bench agent. Full experiment data, agent trajectories, coordinator outputs, and failure diagnoses: [`data` branch → `experiments/self-improving/sonnet-v1/`](../../tree/data/experiments/self-improving/sonnet-v1).
+### Sonnet-v1: Self-improving oracle swarm (5 tasks, 2 epochs)
 
-### Sonnet-v1: Self-improving oracle swarm in action
-
-Our latest experiment ([`sonnet-v1`](../../tree/data/experiments/self-improving/sonnet-v1)) ran `oracle_swarm` with Claude Sonnet 4.5 on 5 tasks for 2 epochs. Oracle agents run alongside coding agents on the same SwarmBus, generating verification tests in parallel:
+We then built the self-improving loop and ran our first end-to-end experiment ([`sonnet-v1`](../../tree/data/experiments/self-improving/sonnet-v1)) with Claude Sonnet 4.5 on **5 tasks** (3 train + 2 test) for 2 epochs. This is a small-scale proof of concept — we haven't yet run at scale across the full target list. Oracle agents run alongside coding agents on the same SwarmBus, generating verification tests in parallel:
 
 ```
 Epoch 0: train=1/3 (33%), test=1/2 (50%), cost=$26.08
