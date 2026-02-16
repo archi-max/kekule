@@ -90,6 +90,81 @@ This diagnosis was correct and led to the coordinator's lesson about not replaci
 
 Sonnet's oracles were more aggressive (more Round 2 triggers), which improved diagnostic signal but doubled cost. The actual solve rate was identical — the same tasks pass/fail regardless of model. The hard tasks (pylint, sphinx, requests) require architectural reasoning that neither model achieves through prompt-based learning alone.
 
+## Why Oracles Failed to Catch the Real Issues
+
+The oracle system triggered Round 2 on multiple tasks but never caught the actual regressions that Docker eval found. The root cause is a design flaw: **oracle agents write synthetic tests instead of running the project's actual test suite.**
+
+### What each oracle did vs what it should have done
+
+**pylint-7080**:
+- Oracle did: Created `oracle_tests/unit_test/test_discover_files.py` that imports `_is_ignored_file` and calls it directly. Passes — the function works in isolation.
+- Oracle should have: Run `pytest tests/test_self.py -x`. Would immediately show 116 failures and that pylint can't even initialize.
+
+**sphinx-8595**:
+- Oracle did: Created `oracle_tests/unit_test/test_empty_all.py` with mocked autodoc module. Passes — the mock doesn't reproduce Sphinx's real RST processing pipeline.
+- Oracle should have: Run `pytest tests/test_ext_autodoc_automodule.py::test_empty_all`. Would show the exact assertion failure.
+
+**requests-2317**:
+- Oracle did: Created tests checking `b'GET'` → `'GET'` conversion. All pass.
+- Oracle should have: Run `pytest test_requests.py::RequestsTestCase::test_mixed_case_scheme_acceptable`. Would catch the regression the swarm introduced.
+
+### The root problem
+
+The oracle role prompt says "Generate verification tests... Write tests to `oracle_tests/`". This tells agents to **write** tests. They should be told to **run existing tests**. The agents have Bash access — they can execute `pytest tests/` — but the prompt steers them toward artifact generation.
+
+The `full_test_suite_runner` strategy was created by the coordinator to fix this, but its prompt still says "run all tests in the same test file" which the agent interprets as "write a test file that runs tests" rather than literally running `pytest`.
+
+## Exact Steps Needed to Pass Each Failing Task
+
+### pylint-7080: `test_ignore_path_recursive_current_dir`
+
+The swarm modifies `_discover_files()` in `pylinter.py`, but this function is shared between user code scanning AND pylint's internal module loading. Steps needed:
+
+1. **Do NOT modify `_discover_files()` directly** — it's used during pylint startup to load checkers
+2. Apply `ignore-paths` filtering at the **caller level** where user files are queued for linting, not inside the shared discovery function
+3. Filter at two levels: package directories (with `__init__.py`) AND individual `.py` files
+4. Verify `python -m pylint --version` still works after patching
+5. Run `pytest tests/test_self.py` — not just the target test
+
+### sphinx-8595: `test_empty_all`
+
+The swarm changes `if not self.__all__:` to `if self.__all__ is None:` but doesn't handle the empty list case. Steps needed:
+
+1. Change `if not self.__all__:` → `if self.__all__ is None:` (done)
+2. **Add explicit empty-list branch**: `elif len(self.__all__) == 0: return False, []`
+3. Also fix the `want_all=False` path (lines 1090-1101) — when `:members: foo` is used but `__all__=[]`, filter those members out
+4. Test three distinct cases: `__all__=None`, `__all__=[]`, `__all__=['item']`
+
+### requests-2317: `test_mixed_case_scheme_acceptable`
+
+The swarm fixes bytes→string conversion but introduces a mixed-case regression. Steps needed:
+
+1. Use `to_native_string(method)` instead of `builtin_str(method)` in `models.py`
+2. Fix the **second call site** in `sessions.py` (`method=request.method.upper()`)
+3. Preserve the `.upper()` call chain — the regression happens because the casing behavior changes
+4. Run `pytest test_requests.py::RequestsTestCase::test_mixed_case_scheme_acceptable` to verify no regression
+
+## Suggested Next Experiment
+
+### experiment: `oracle-v2-real-tests`
+
+The single highest-impact change is fixing the oracle agents to **run existing tests instead of writing new ones**. Proposed changes:
+
+1. **Modify the `full_test_suite_runner` oracle strategy prompt** to explicitly say:
+   ```
+   Use Bash to run `pytest <test_file> -x --tb=short` on the project's EXISTING test files.
+   Do NOT create new test files. Find the test file related to the modified source code and
+   run it directly. Report the full pytest output.
+   ```
+
+2. **Add a `target_test_runner` strategy** that runs the exact FAIL_TO_PASS test names from the problem statement (if mentioned) using Bash.
+
+3. **Remove or demote `unit_test` and `regression_check` strategies** — they consistently produce false negatives (synthetic tests that pass when real tests fail).
+
+4. **Run with the same 5 tasks** to directly compare oracle effectiveness.
+
+Expected impact: If the oracle correctly runs `pytest tests/test_self.py` for pylint, it would catch the 116 regressions in Round 0, give the swarm actionable feedback ("your patch breaks pylint initialization"), and potentially lead to a correct fix by Round 2. Same for sphinx (`test_empty_all` would fail) and requests (`test_mixed_case` would fail).
+
 ## Artifacts
 
 All data saved to `results/sonnet-v1/`:
