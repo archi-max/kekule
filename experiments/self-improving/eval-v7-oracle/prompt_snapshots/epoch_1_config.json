@@ -1,0 +1,57 @@
+{
+  "lessons_text": "\n\n### Epoch 0 Lessons\nWhen modifying a method that has both __repr__ and __str__ implementations, check the test to understand whether they should return the same output or different outputs. If a test asserts equality between str() and repr(), ensure your __str__ implementation returns the same format as __repr__.\n\nWhen a fix involves changing conditional logic (like 'if not x' to 'if x is None'), trace through ALL code paths affected by the change, not just the target behavior. Check how downstream code depends on return values.\n\nBefore submitting a patch, run the full test suite for the affected module, not just the target test. Patches that fix the target test but break dozens of other tests are not acceptable.\n\nWhen fixing behavior for edge cases (empty collections, None values, zero-length inputs), ensure the fix handles all three distinct cases: undefined/None, empty, and populated. Each may require different behavior.\n\nIf tests fail during setup (import errors, missing modules), verify that your fix doesn't inadvertently change imports or module structure. Check that all test dependencies remain satisfied.",
+  "oracle_strategies": [
+    {
+      "name": "unit_test",
+      "description": "Generate focused pytest unit tests that verify the fix handles the reported behavior",
+      "agent_prompt": "\nYou are an Oracle Generator for SWE-bench verification.\n\n## Your Mission\nGiven a GitHub issue (problem statement), generate pytest tests that verify whether\na fix correctly addresses the reported behavior.\n\n## Workflow\n1. Read the problem statement carefully. Identify what behavior is broken.\n2. Explore the codebase to understand the relevant modules, classes, and functions.\n3. Write pytest tests that:\n   - Test the specific behavior described in the issue\n   - Include at least one test for the main fix\n   - Include at least one edge case test\n4. Write the test file to the specified output path.\n\n## Test Quality\n- Tests MUST be runnable with `pytest <file>` (no extra flags)\n- Tests MUST import from the codebase correctly (verify import paths exist)\n- Tests MUST have clear assertion messages\n- Tests SHOULD NOT modify the codebase (read-only verification)\n- Tests SHOULD be focused on the issue, not general functionality\n- Do NOT use external fixtures unless verified in conftest.py\n- Do NOT make network calls\n",
+      "execution_mode": "pytest",
+      "enabled": true,
+      "weight": 1.0,
+      "prompt_addendum": "When generating unit tests, include tests for boundary conditions: None inputs, empty collections, and single-element cases. Verify that both return values AND side effects match the expected behavior."
+    },
+    {
+      "name": "regression_check",
+      "description": "Generate tests that verify the fix doesn't break existing functionality",
+      "agent_prompt": "\nYou are a Regression Oracle Generator for SWE-bench verification.\n\n## Your Mission\nGiven a GitHub issue, generate pytest tests that verify the fix does NOT break\nexisting functionality in the affected modules.\n\n## Workflow\n1. Read the problem statement to identify which modules are affected.\n2. Explore the codebase to find existing public APIs and usage patterns.\n3. Write pytest tests that verify:\n   - Existing functionality still works after the fix\n   - Related methods/functions aren't broken\n   - Type contracts are maintained\n4. Write the test file to the specified output path.\n\n## Test Quality\n- Focus on EXISTING behavior, not the new fix\n- Test the public API of affected modules\n- Use real module imports (verify they exist)\n- Tests should pass on BOTH the original and fixed code\n",
+      "execution_mode": "pytest",
+      "enabled": true,
+      "weight": 1.5,
+      "prompt_addendum": "Run at minimum the entire test file containing the target tests, not just individual test functions. Report the count of any newly failing tests."
+    },
+    {
+      "name": "behavioral_assertion",
+      "description": "Generate simple bash-based behavioral checks (import, call, assert)",
+      "agent_prompt": "\nYou are a Behavioral Oracle Generator for SWE-bench verification.\n\n## Your Mission\nGiven a GitHub issue, generate lightweight behavioral checks as bash scripts.\nThese are quick smoke tests that verify basic correctness.\n\n## Workflow\n1. Read the problem statement.\n2. Explore the codebase to understand imports and module structure.\n3. Write a bash script that:\n   - Uses `python -c \"...\"` to import and test key behaviors\n   - Exits 0 if all checks pass, non-zero otherwise\n   - Prints clear messages about what passed/failed\n4. Write the script to the specified output path.\n\n## Script Quality\n- Each check should be a single python -c command\n- Use set -e to fail fast\n- Print descriptive messages before each check\n- Keep it under 20 checks -- focus on the most important behaviors\n",
+      "execution_mode": "bash",
+      "enabled": true,
+      "weight": 1.0,
+      "prompt_addendum": ""
+    },
+    {
+      "name": "full_test_suite_runner",
+      "description": "Run the complete test file or module containing the target test, not just the target test itself",
+      "agent_prompt": "Before declaring the fix complete, run all tests in the same test file as the target test. Report any tests that were previously passing but now fail. This catches regressions that targeted testing misses.",
+      "execution_mode": "pytest",
+      "enabled": true,
+      "weight": 2.0,
+      "prompt_addendum": ""
+    },
+    {
+      "name": "str_repr_consistency_check",
+      "description": "For fixes involving __str__ or __repr__, verify the relationship between the two methods",
+      "agent_prompt": "If the fix modifies __str__ or __repr__, create a simple test that prints both str(obj) and repr(obj) on the modified class. Check if they should be equal, and verify neither returns empty string for non-trivial objects.",
+      "execution_mode": "bash",
+      "enabled": true,
+      "weight": 1.5,
+      "prompt_addendum": ""
+    }
+  ],
+  "composition": {
+    "num_coding_agents": 3,
+    "num_oracle_rounds": 2,
+    "oracle_parallelism": "sequential",
+    "planner_guidance": "Before declaring a fix complete, always run a broader test scope (entire test file or module). Include a dedicated test_validator role that runs the full test file after the fix is applied."
+  },
+  "prompt_overrides": []
+}

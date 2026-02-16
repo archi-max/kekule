@@ -1,0 +1,35 @@
+{
+  "lessons_text": "## Test Environment Verification\n- Before submitting a patch, verify that the target test can actually execute (not just ERROR during setup). If a test ERRORs due to missing dependencies, fixture failures, or import errors, this is a blocking issue - the fix cannot be validated.\n- When running a test file shows widespread failures with the same error message across many tests, investigate whether this is caused by an environment or infrastructure issue rather than the patch itself.\n\n## Regression Detection\n- After applying a patch, run a broader set of tests from the same test file or module, not just the target test. If the fix causes regressions in unrelated tests, the approach needs reconsideration.\n- When modifying code that is part of a larger pipeline (e.g., file discovery, initialization sequences), trace all callers of the modified code to ensure the change doesn't break other features.\n\n## Incremental Verification\n- For fixes involving conditional logic changes (like changing `if not x` to `if x is None`), create a minimal test case that can run in isolation first, before running the full test suite. This isolates whether the logic is correct from whether the test infrastructure works.",
+  "oracle_adjustments": {
+    "test_execution_verifier": {
+      "description": "Verify that tests can actually execute (not ERROR during setup) before accepting patch",
+      "agent_prompt": "Run the target test and check the output. If the test shows ERROR status (not FAILED), this means the test couldn't even execute due to setup issues like missing dependencies, import failures, or fixture errors. Report this as a blocking issue. Distinguish between: (1) Test PASSED - fix works, (2) Test FAILED - fix is incorrect or incomplete, (3) Test ERROR - test infrastructure broken, cannot validate fix.",
+      "execution_mode": "bash",
+      "weight": 2.5,
+      "enabled": true
+    },
+    "regression_scanner": {
+      "description": "Run additional tests from the same module to catch regressions early",
+      "agent_prompt": "After the target test passes, run 5-10 additional tests from the same test file or module. If many tests fail with the same error message, report this as a potential regression or environment issue. Look for patterns: if failures mention missing symbols, import errors, or configuration issues that weren't present in the original failing test, the patch may have broken something.",
+      "execution_mode": "bash",
+      "weight": 2.0,
+      "enabled": true
+    },
+    "unit_test": {
+      "prompt_addendum": "Before generating complex tests, first verify the test environment can run the target tests by checking if they ERROR during setup. If they do, focus on simpler behavioral checks that don't rely on the full test infrastructure."
+    },
+    "runtime_validation": {
+      "weight": 2.5,
+      "prompt_addendum": "Create isolated reproduction scripts that test the fix logic directly, without relying on the project's test infrastructure. This catches cases where the test suite has environment issues but the fix itself is correct."
+    }
+  },
+  "composition": {
+    "num_coding_agents": 3,
+    "num_oracle_rounds": 3,
+    "oracle_parallelism": "sequential",
+    "planner_guidance": "Always include a dedicated test_runner role that: (1) verifies tests can execute before applying patches, (2) runs the target test AND 5-10 nearby tests after patching, (3) distinguishes between test FAILED vs test ERROR states."
+  },
+  "analysis": "## Epoch 1 Analysis\n\n### Score: Train 1/3 (33.3%), Test 1/2 (50.0%)\n\n### Failure Analysis\n\n**pylint-dev__pylint-7080 (FAIL)**\n- The swarm applied a patch to add `_is_ignored_file()` filtering to the recursive file discovery in `pylinter.py`\n- The patch looks correct: it filters files during os.walk to respect ignore_paths\n- However, 116 tests regressed with `UnknownMessageError: No such message id or symbol 'c-extension-no-member'`\n- The target test `test_ignore_path_recursive_current_dir` still FAILED\n- Root cause: The test infrastructure has an issue loading the c-extension checker, which is separate from the patch. But more critically, the target test still fails, meaning the fix is incomplete\n- The fix was applied to the wrong location OR there's another code path that needs similar treatment\n\n**sphinx-doc__sphinx-8595 (FAIL)**\n- The swarm correctly identified the issue: `if not self.__all__` treats `[]` same as `None`\n- Applied correct fix: `if self.__all__ is None` to distinguish between undefined and empty `__all__`\n- However, test ERROR'd during setup: `ModuleNotFoundError: No module named 'roman'`\n- The 'roman' module is imported by sphinx.writers.latex, which is loaded during test fixture setup\n- The fix was never actually validated at runtime\n- This is an environment issue, not a fix issue - but the swarm didn't detect this\n\n**django__django-16379 (PASS)**\n- Successfully fixed race condition in FileBasedCache.has_key\n- All target tests passed, no regressions\n- Demonstrates the swarm works when: (1) fix is correct, (2) test environment works\n\n### Oracle Effectiveness\n\n- **runtime_validation**: Would have helped if it ran BEFORE accepting patch - could detect ERROR states\n- **regression_check**: Insufficient - didn't catch the 116 regressions before submission\n- **unit_test**: Not effective when test infrastructure is broken\n\n### Key Gaps\n\n1. **No ERROR vs FAILED distinction**: The swarm doesn't distinguish between a test that runs and fails (fix is wrong) vs a test that can't run at all (environment issue)\n\n2. **No regression scanning**: The swarm doesn't run broader tests to catch regressions before submission\n\n3. **Missing isolated reproduction**: For sphinx, a simple Python script calling the affected method would have validated the fix even though the test suite had issues\n\n### Cost Analysis\n- pylint: $4.32 / 93 turns (most expensive, failed)\n- django: $2.13 / 85 turns (passed)\n- sphinx: $1.96 / 79 turns (cheapest, but ENV failed)\n\n### Train vs Test Divergence\n- Train: 33.3% (1/3)\n- Test: 50.0% (1/2)\n- Test performed better, suggesting lessons aren't overfitting. The failures are due to environmental issues (sphinx) and incomplete fixes (pylint), not lesson-driven overtuning.",
+  "train_score": 0.3333333333333333,
+  "test_score": 0.5
+}

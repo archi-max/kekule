@@ -1,0 +1,10 @@
+{
+  "train_ids": [
+    "pylint-dev__pylint-7080",
+    "sphinx-doc__sphinx-8595"
+  ],
+  "test_ids": [
+    "psf__requests-2317"
+  ],
+  "train_ratio": 0.7
+}

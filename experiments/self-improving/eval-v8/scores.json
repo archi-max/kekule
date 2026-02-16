@@ -1,0 +1,35 @@
+[
+  {
+    "epoch": 0,
+    "train_score": 0.3333333333333333,
+    "test_score": 0.5,
+    "train_passed": 1,
+    "train_total": 3,
+    "test_passed": 1,
+    "test_total": 2,
+    "total_cost_usd": 13.74761475,
+    "duration_s": 1222.7648384571075
+  },
+  {
+    "epoch": 1,
+    "train_score": 0.3333333333333333,
+    "test_score": 0.5,
+    "train_passed": 1,
+    "train_total": 3,
+    "test_passed": 1,
+    "test_total": 2,
+    "total_cost_usd": 13.73516475,
+    "duration_s": 1065.5977499485016
+  },
+  {
+    "epoch": 2,
+    "train_score": 0.3333333333333333,
+    "test_score": 0.5,
+    "train_passed": 1,
+    "train_total": 3,
+    "test_passed": 1,
+    "test_total": 2,
+    "total_cost_usd": 14.1138835,
+    "duration_s": 1512.0590267181396
+  }
+]

@@ -1,0 +1,29 @@
+[
+  {
+    "instance_id": "pylint-dev__pylint-7080",
+    "root_cause": "The patch applies ignore-paths filtering during recursive file discovery, which prevents pylint from loading its own internal checker modules when pylint itself is being linted or during test initialization",
+    "what_swarm_missed": [
+      "The _is_ignored_file check in _discover_files is called when pylint loads ANY Python files recursively, including its own checkers and extensions during initialization",
+      "The patch doesn't distinguish between scanning user code vs scanning pylint's own codebase, causing pylint to filter out its own essential modules",
+      "The error 'c-extension-no-member' not found indicates pylint.extensions.typecheck wasn't loaded because it was filtered out by ignore-paths",
+      "116 test regressions all fail with the same root cause: pylint can't initialize properly because essential checkers are filtered out"
+    ],
+    "behaviors_to_fix": [
+      "Package directories (containing __init__.py) must be checked against ignore-paths before yielding them as modules to lint",
+      "Individual .py files within non-package directories must be checked against ignore-paths before yielding them",
+      "The ignore-paths filtering must ONLY apply to user code being linted, not to pylint's own modules during its initialization"
+    ],
+    "test_analysis": "The target test 'test_ignore_path_recursive_current_dir' expects that files matching ignore-paths pattern '^ignored_subdirectory/.*' are not linted. However, the fix causes ALL tests to fail because pylint can't even initialize - it tries to enable 'c-extension-no-member' but that checker was never loaded because the patch filtered out pylint/extensions/ files. The test expects exit code 0 but gets an UnknownMessageError exception instead.",
+    "suggestion": "The fix should only apply ignore-paths filtering at the point where user-specified files/directories are being discovered for linting, not during pylint's internal module loading. An oracle that runs 'python -m pylint --version' after applying the patch would immediately catch that the patched pylint can't even start. Additionally, the fix location is wrong - it should filter at the point where files are added to the linting queue, not during low-level file discovery that's also used for loading pylint's own modules.",
+    "confidence": 0.95
+  },
+  {
+    "instance_id": "sphinx-doc__sphinx-8595",
+    "root_cause": "Analyst output was not valid JSON",
+    "what_swarm_missed": [],
+    "behaviors_to_fix": [],
+    "test_analysis": "Now let me understand what happens before and after the fix. The key is analyzing what the original code did:\n\n**Original code (line 1077):**\n```python\nif not self.__all__:  # This is True when __all__ is None OR empty list []\n```\n\n**Fixed code:**\n```python\nif self.__all__ is None:  # Only True when __all__ is None\nelif len(self.__all__) == 0:  # True when __all__ is []\n    return False, []\n```\n\nThe fix looks correct in principle. The test failed due to an environment setup issue (`roman` module",
+    "suggestion": "",
+    "confidence": 0.0
+  }
+]

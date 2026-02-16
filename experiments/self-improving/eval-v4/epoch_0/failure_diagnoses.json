@@ -1,0 +1,20 @@
+[
+  {
+    "instance_id": "pylint-dev__pylint-7080",
+    "root_cause": "Analyst failed to produce structured output",
+    "what_swarm_missed": [],
+    "behaviors_to_fix": [],
+    "test_analysis": "",
+    "suggestion": "",
+    "confidence": 0.0
+  },
+  {
+    "instance_id": "sphinx-doc__sphinx-8595",
+    "root_cause": "Analyst failed to produce structured output",
+    "what_swarm_missed": [],
+    "behaviors_to_fix": [],
+    "test_analysis": "",
+    "suggestion": "",
+    "confidence": 0.0
+  }
+]

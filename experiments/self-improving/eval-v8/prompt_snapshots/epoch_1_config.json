@@ -1,0 +1,57 @@
+{
+  "lessons_text": "\n\n### Epoch 0 Lessons\n## Runtime Validation\n- Before submitting any patch, always run a minimal reproduction script or targeted test to verify the fix actually works. Static code analysis alone is insufficient - many fixes look correct but fail at runtime due to edge cases or integration issues.\n- If the target test fails to even run (import errors, missing modules, fixture setup failures), treat this as a blocking issue that must be resolved before claiming the fix works.\n\n## Correct File Identification\n- When a bug involves multiple code paths (e.g., single files vs. directories, recursive vs. non-recursive modes), trace ALL code paths that the issue describes, not just the most obvious one. The fix often needs to be in a different module than where symptoms appear.\n- Read the issue description carefully for hints about which module or function needs modification. If the issue mentions a specific config option or CLI flag, grep for where that option is parsed AND where it is applied.\n\n## Regression Prevention\n- When adding conditional checks (e.g., filtering files), ensure the check doesn't accidentally block valid inputs. Test with both matching and non-matching cases.\n- If a test suite shows many failures with the same error message (e.g., UnknownMessageError for a specific symbol), investigate whether this is an environment/dependency issue rather than a patch problem.\n\n## Boolean Edge Cases\n- When fixing code that checks truthiness of collections, distinguish between `None` (missing), empty collection `[]`, and non-empty collection. Python treats both `None` and `[]` as falsy, so `if not x:` conflates them - use explicit `is None` checks when the difference matters.",
+  "oracle_strategies": [
+    {
+      "name": "unit_test",
+      "description": "Generate focused pytest unit tests that verify the fix handles the reported behavior",
+      "agent_prompt": "\nYou are an Oracle Generator for SWE-bench verification.\n\n## Your Mission\nGiven a GitHub issue (problem statement), generate pytest tests that verify whether\na fix correctly addresses the reported behavior.\n\n## Workflow\n1. Read the problem statement carefully. Identify what behavior is broken.\n2. Explore the codebase to understand the relevant modules, classes, and functions.\n3. Write pytest tests that:\n   - Test the specific behavior described in the issue\n   - Include at least one test for the main fix\n   - Include at least one edge case test\n4. Write the test file to the specified output path.\n\n## Test Quality\n- Tests MUST be runnable with `pytest <file>` (no extra flags)\n- Tests MUST import from the codebase correctly (verify import paths exist)\n- Tests MUST have clear assertion messages\n- Tests SHOULD NOT modify the codebase (read-only verification)\n- Tests SHOULD be focused on the issue, not general functionality\n- Do NOT use external fixtures unless verified in conftest.py\n- Do NOT make network calls\n",
+      "execution_mode": "pytest",
+      "enabled": true,
+      "weight": 1.0,
+      "prompt_addendum": "When generating unit tests, always include edge cases for: None vs empty collection, single item vs directory/recursive, and both matching and non-matching filter patterns."
+    },
+    {
+      "name": "regression_check",
+      "description": "Generate tests that verify the fix doesn't break existing functionality",
+      "agent_prompt": "\nYou are a Regression Oracle Generator for SWE-bench verification.\n\n## Your Mission\nGiven a GitHub issue, generate pytest tests that verify the fix does NOT break\nexisting functionality in the affected modules.\n\n## Workflow\n1. Read the problem statement to identify which modules are affected.\n2. Explore the codebase to find existing public APIs and usage patterns.\n3. Write pytest tests that verify:\n   - Existing functionality still works after the fix\n   - Related methods/functions aren't broken\n   - Type contracts are maintained\n4. Write the test file to the specified output path.\n\n## Test Quality\n- Focus on EXISTING behavior, not the new fix\n- Test the public API of affected modules\n- Use real module imports (verify they exist)\n- Tests should pass on BOTH the original and fixed code\n",
+      "execution_mode": "pytest",
+      "enabled": true,
+      "weight": 1.0,
+      "prompt_addendum": "If running the test suite shows many failures with identical error messages (especially import errors or message-not-found errors), first check if this is an environment issue before attributing failures to the patch."
+    },
+    {
+      "name": "behavioral_assertion",
+      "description": "Generate simple bash-based behavioral checks (import, call, assert)",
+      "agent_prompt": "\nYou are a Behavioral Oracle Generator for SWE-bench verification.\n\n## Your Mission\nGiven a GitHub issue, generate lightweight behavioral checks as bash scripts.\nThese are quick smoke tests that verify basic correctness.\n\n## Workflow\n1. Read the problem statement.\n2. Explore the codebase to understand imports and module structure.\n3. Write a bash script that:\n   - Uses `python -c \"...\"` to import and test key behaviors\n   - Exits 0 if all checks pass, non-zero otherwise\n   - Prints clear messages about what passed/failed\n4. Write the script to the specified output path.\n\n## Script Quality\n- Each check should be a single python -c command\n- Use set -e to fail fast\n- Print descriptive messages before each check\n- Keep it under 20 checks -- focus on the most important behaviors\n",
+      "execution_mode": "bash",
+      "enabled": true,
+      "weight": 1.0,
+      "prompt_addendum": ""
+    },
+    {
+      "name": "runtime_validation",
+      "description": "Run a minimal reproduction script before accepting any patch to verify the fix works at runtime, not just statically",
+      "agent_prompt": "Create a minimal Python script that reproduces the issue described in the problem statement. The script should: 1) Import only what's needed from the target library, 2) Set up a minimal test case matching the issue description, 3) Assert the expected behavior. Run the script with the patch applied and verify it passes. If the script fails to run due to import errors, report this as a blocking issue.",
+      "execution_mode": "bash",
+      "enabled": true,
+      "weight": 2.0,
+      "prompt_addendum": ""
+    },
+    {
+      "name": "code_path_tracer",
+      "description": "Trace all code paths mentioned in the issue to identify the correct file to modify",
+      "agent_prompt": "Before accepting a patch, verify it modifies the correct file. For this issue: 1) Identify all CLI flags or config options mentioned, 2) Grep for where each option is defined AND where it is used/applied, 3) Trace the execution path from user input to the buggy behavior, 4) Confirm the patch file appears in this execution path. If the patch modifies a file NOT in the critical path, flag this as a likely incorrect fix location.",
+      "execution_mode": "bash",
+      "enabled": true,
+      "weight": 1.5,
+      "prompt_addendum": ""
+    }
+  ],
+  "composition": {
+    "num_coding_agents": 3,
+    "num_oracle_rounds": 3,
+    "oracle_parallelism": "sequential",
+    "planner_guidance": "Always include a dedicated test_runner role that executes the actual target tests (not just generated tests) before the swarm completes. The test_runner should report whether tests ran, passed, and what output was produced."
+  },
+  "prompt_overrides": []
+}

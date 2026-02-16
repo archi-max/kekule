@@ -1,0 +1,34 @@
+[
+  {
+    "instance_id": "pylint-dev__pylint-7080",
+    "root_cause": "The fix modified the wrong code path - it added ignore-paths filtering in _discover_files for individual .py files, but the bug occurs when packages (directories with __init__.py) match ignore-paths patterns and should be skipped entirely before recursing into their submodules",
+    "what_swarm_missed": [
+      "The actual bug is in expand_modules.py where packages matching ignore-paths are not filtered when calling modutils.get_module_files()",
+      "The test test_recursive_ignore_paths_on_packages was added but never actually executed because the environment had a dependency issue (c-extension-no-member error)",
+      "The fix only handles .py files in non-package directories, not package directories that should be excluded wholesale"
+    ],
+    "behaviors_to_fix": [
+      "When --recursive=y is used and a directory is a package (has __init__.py), if that package path matches ignore-paths regex, the entire package and all submodules should be skipped",
+      "The ignore-paths check needs to happen in expand_modules.py at line 146 where it currently only checks basename and subfilepath, but needs to also check directory paths with trailing separator"
+    ],
+    "test_analysis": "The target test test_ignore_path_recursive_current_dir failed with UnknownMessageError for 'c-extension-no-member', which is an environment/dependency issue, NOT a logic error in the fix. All 116 regressions have the same root cause - the test environment has an incompatible pylint/astroid version. The actual ignore-paths logic was never tested because tests couldn't even import pylint properly",
+    "suggestion": "Before evaluating: (1) Fix the test environment by ensuring compatible pylint/astroid versions. (2) Apply the patch from the problem statement to expand_modules.py line 60, NOT the pylinter.py patch that was actually used. (3) Add an oracle that validates patches are applied to the correct file by checking if the modified code path is actually executed during the failing test scenario. (4) Add an oracle that runs pytest import checks before running full test suite to catch environment issues early",
+    "confidence": 0.9
+  },
+  {
+    "instance_id": "sphinx-doc__sphinx-8595",
+    "root_cause": "Test infrastructure failed during fixture setup with missing 'roman' module dependency, preventing test execution entirely; the fix was never actually tested",
+    "what_swarm_missed": [
+      "The swarm never verified the fix actually works by running it - they only did code analysis",
+      "The swarm didn't create or run a minimal test script to validate the behavior before submitting",
+      "The swarm assumed code correctness through static analysis alone without runtime verification"
+    ],
+    "behaviors_to_fix": [
+      "When `__all__ = []` (empty list), automodule :members: should show only module docstring with zero member entries",
+      "Distinguish between missing `__all__` (None) and empty `__all__` ([]) - only the former should show all members"
+    ],
+    "test_analysis": "The test failed to execute at all due to ModuleNotFoundError for 'roman' during sphinx.builders.latex import in test fixture setup. The expected behavior is that when target.empty_all module (which has `__all__ = []` and three functions foo/bar/baz) is documented with automodule :members:, the output should only contain module-level docstring lines with no function documentation. The test never reached the assertion that validates this behavior.",
+    "suggestion": "Before submitting patches, swarm agents should run a minimal reproduction script (not full pytest) to validate the fix works. For this issue: create a test script that imports ModuleDocumenter, mocks a module with __all__=[], calls get_object_members(want_all=True), and verifies it returns (False, []). An oracle that runs standalone verification scripts (not requiring full test infrastructure) would catch untested fixes.",
+    "confidence": 0.95
+  }
+]

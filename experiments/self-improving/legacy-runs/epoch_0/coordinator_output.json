@@ -1,0 +1,21 @@
+{
+  "lessons_text": "When making changes to path-handling or pattern-matching code (like ignore paths or file filters), always verify behavior with both relative and absolute paths, as well as paths starting with './' or the current directory.\n\nBefore committing to a fix, run the full test suite for the affected module to catch regressions early. A passing target test is meaningless if it breaks dozens of other tests.\n\nWhen a test asserts that a list or collection should be empty (like __all__ = []), verify that your fix handles the empty case explicitly, not just non-empty cases.\n\nIf you've iterated more than 30-40 turns without progress, step back and re-read the issue description and failing test to ensure you understand what behavior is actually expected.\n\nWhen modifying iteration or filtering logic, test edge cases: empty inputs, single-item inputs, inputs with special characters, and recursive vs. non-recursive modes.\n\nBefore modifying any file, trace how that code path is exercised by the failing test. Understand the full call chain from test setup to assertion.",
+  "oracle_adjustments": {
+    "regression_check": {
+      "weight": 1.5,
+      "prompt_addendum": "Run the full test file or module, not just the single failing test. Report if any previously-passing tests now fail."
+    },
+    "behavioral_assertion": {
+      "prompt_addendum": "Include edge case checks: empty inputs, None values, and boundary conditions relevant to the issue description."
+    }
+  },
+  "composition": {
+    "num_coding_agents": 2,
+    "num_oracle_rounds": 3,
+    "oracle_parallelism": "parallel",
+    "planner_guidance": "Include a dedicated test_runner role that runs the full test module after each proposed change, not just the target test."
+  },
+  "analysis": "## Patterns of Failure\n\n### pylint-dev__pylint-7080\nThe swarm produced a patch that was successfully applied but caused 116 test regressions. The target test (test_ignore_path_recursive_current_dir) still failed. This indicates the agents made a change that fundamentally broke the ignore-path logic while attempting to fix a specific case. The high turn count (93) suggests significant floundering. Key insight: the agents likely changed path-matching behavior broadly without understanding the full test coverage.\n\n### sphinx-doc__sphinx-8595  \nThe target test (test_empty_all) failed to pass, though no regressions were introduced. This suggests the agents either didn't understand what the test expected (handling of empty __all__ in a module) or made an incomplete fix. Turn count was 75, also indicating significant iteration without resolution.\n\n## Oracle Strategy Effectiveness\nThe oracle strategies (unit_test, regression_check, behavioral_assertion) appear to not have caught the problems early enough. The pylint task's 116 regressions suggest regression_check either wasn't run frequently enough or wasn't weighted heavily in agent decision-making. Increasing regression_check weight and making it run full test modules should help.\n\n## Cost and Turn Distribution\n- pylint: $3.19, 93 turns - very expensive for 0 success\n- sphinx: $2.00, 75 turns - moderate cost, 0 success\n- Combined: $5.19 for 0/2 success rate (0%)\n\nThe high turn counts suggest agents were stuck in retry loops. Reducing coding agents from 3 to 2 and adding an extra oracle round may help agents converge faster by getting more frequent feedback.\n\n## Train vs Test Score Divergence\nBoth are 0%, so no divergence yet. However, with only 2 train and 1 test task, these numbers are not statistically meaningful. The lessons I'm adding are intentionally generic to avoid overfitting to these specific failures.\n\n## Hypothesis for Next Epoch\nThe primary failure mode was making changes without understanding full test coverage. The agents need to:\n1. Run broader test suites earlier and more often\n2. Understand edge cases (empty inputs, current directory, relative paths)\n3. Recognize when they're stuck and re-read the problem statement\n\nReducing to 2 coding agents should reduce duplication and confusion. Adding oracle rounds increases feedback frequency. The planner guidance ensures a test_runner role always exists.",
+  "train_score": 0.0,
+  "test_score": 0.0
+}

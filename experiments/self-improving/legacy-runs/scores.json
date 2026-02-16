@@ -1,0 +1,13 @@
+[
+  {
+    "epoch": 0,
+    "train_score": 0.0,
+    "test_score": 0.0,
+    "train_passed": 0,
+    "train_total": 2,
+    "test_passed": 0,
+    "test_total": 1,
+    "total_cost_usd": 7.4862185000000006,
+    "duration_s": 1112.5666301250458
+  }
+]

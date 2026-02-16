@@ -1,0 +1,12 @@
+{
+  "train_ids": [
+    "django__django-16379",
+    "pylint-dev__pylint-7080",
+    "sphinx-doc__sphinx-8595"
+  ],
+  "test_ids": [
+    "django__django-14915",
+    "psf__requests-2317"
+  ],
+  "train_ratio": 0.7
+}

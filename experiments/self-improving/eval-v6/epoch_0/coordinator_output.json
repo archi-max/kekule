@@ -1,0 +1,27 @@
+{
+  "lessons_text": "When modifying file discovery or filtering logic, verify that the filter only applies to the intended scope (e.g., user-specified targets) and not to the tool's own internal modules or initialization paths.\n\nAfter making changes to a CLI tool, run a basic sanity check (like --version or --help) to verify the tool still initializes correctly before running the full test suite.\n\nWhen distinguishing between 'missing/None' and 'empty' in conditionals, use explicit identity checks (`is None`) rather than truthiness checks (`not x`), since empty collections are falsy but semantically different from None.\n\nWhen a fix involves recursive file traversal, consider all code paths that use that traversal - not just the one mentioned in the issue. Internal tool modules often share discovery mechanisms with user-facing features.\n\nBefore finalizing a patch, trace through what happens when the modified code path is called during tool startup, not just during the operation described in the issue.",
+  "oracle_adjustments": {
+    "smoke_test": {
+      "description": "Run basic tool initialization checks after patching to catch catastrophic regressions",
+      "agent_prompt": "After the patch is applied, run a minimal sanity check for the tool: for CLI tools, run --version or --help; for libraries, import the main module and call a basic function. Report any initialization failures, import errors, or crashes.",
+      "execution_mode": "bash",
+      "weight": 2.0
+    },
+    "regression_check": {
+      "prompt_addendum": "Focus especially on whether the change affects code paths beyond the immediate fix location. For file discovery/filtering changes, verify the filter doesn't accidentally exclude the tool's own modules during initialization.",
+      "weight": 1.5
+    },
+    "unit_test": {
+      "prompt_addendum": "Include a test that exercises the 'boundary' condition: if fixing None vs empty, test both cases explicitly. If fixing a filter, test that non-target files are still accessible."
+    }
+  },
+  "composition": {
+    "num_coding_agents": 3,
+    "num_oracle_rounds": 2,
+    "oracle_parallelism": "parallel",
+    "planner_guidance": "For changes to file discovery or traversal logic, always include verification that the tool's own internal modules remain accessible after the patch."
+  },
+  "analysis": "Epoch 0 achieved 33.3% on train (1/3) and 50% on test (1/2). The passing task (django cache race condition) was a clean TOCTOU fix using try/except pattern.\n\nThe two train failures show distinct patterns:\n\n1. **pylint-dev__pylint-7080**: This was a catastrophic regression. The swarm correctly identified that ignore-paths wasn't being applied during recursive file discovery, but their fix applied the filter too broadly - in _discover_files which is also used to load pylint's own checker modules during initialization. The error 'c-extension-no-member' not found appears 116 times because pylint.extensions.typecheck was filtered out by the ignore-paths pattern. This is a scope-of-change validation failure. An oracle that simply ran 'python -m pylint --version' after applying the patch would have caught this immediately.\n\n2. **sphinx-doc__sphinx-8595**: The patch logic appears correct (changing `if not self.__all__` to `if self.__all__ is None` and handling empty list separately). However, the test failed during pytest setup due to 'ModuleNotFoundError: No module named docutils.utils.roman'. This appears to be a test environment dependency issue rather than a patch quality issue. The oracle system couldn't catch this because the failure is in test infrastructure, not the fix itself.\n\nThe most valuable improvement would be adding a 'smoke_test' oracle that verifies basic tool functionality after patching. This would have caught the pylint failure before any test suite was run. I'm also increasing the weight on regression_check and adding guidance about scope validation.\n\nCost was reasonable (average ~$3 per task, ~93 turns per task). The composition seems appropriate; no need to adjust agent count.\n\nTest vs train divergence (50% vs 33.3%) could just be noise given the small sample size, but could also indicate the sphinx failure was an environment fluke rather than a generalizable pattern.",
+  "train_score": 0.3333333333333333,
+  "test_score": 0.5
+}

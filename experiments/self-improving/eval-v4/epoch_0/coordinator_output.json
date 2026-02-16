@@ -1,0 +1,13 @@
+{
+  "lessons_text": "",
+  "oracle_adjustments": {},
+  "composition": {
+    "num_coding_agents": 3,
+    "num_oracle_rounds": 2,
+    "oracle_parallelism": "parallel",
+    "planner_guidance": ""
+  },
+  "analysis": "Now let me look at the test outputs to understand why these patches failed.",
+  "train_score": 0.3333333333333333,
+  "test_score": 0.5
+}

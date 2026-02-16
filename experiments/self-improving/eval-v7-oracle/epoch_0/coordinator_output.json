@@ -1,0 +1,33 @@
+{
+  "lessons_text": "When modifying a method that has both __repr__ and __str__ implementations, check the test to understand whether they should return the same output or different outputs. If a test asserts equality between str() and repr(), ensure your __str__ implementation returns the same format as __repr__.\n\nWhen a fix involves changing conditional logic (like 'if not x' to 'if x is None'), trace through ALL code paths affected by the change, not just the target behavior. Check how downstream code depends on return values.\n\nBefore submitting a patch, run the full test suite for the affected module, not just the target test. Patches that fix the target test but break dozens of other tests are not acceptable.\n\nWhen fixing behavior for edge cases (empty collections, None values, zero-length inputs), ensure the fix handles all three distinct cases: undefined/None, empty, and populated. Each may require different behavior.\n\nIf tests fail during setup (import errors, missing modules), verify that your fix doesn't inadvertently change imports or module structure. Check that all test dependencies remain satisfied.",
+  "oracle_adjustments": {
+    "full_test_suite_runner": {
+      "description": "Run the complete test file or module containing the target test, not just the target test itself",
+      "agent_prompt": "Before declaring the fix complete, run all tests in the same test file as the target test. Report any tests that were previously passing but now fail. This catches regressions that targeted testing misses.",
+      "execution_mode": "pytest",
+      "weight": 2.0
+    },
+    "str_repr_consistency_check": {
+      "description": "For fixes involving __str__ or __repr__, verify the relationship between the two methods",
+      "agent_prompt": "If the fix modifies __str__ or __repr__, create a simple test that prints both str(obj) and repr(obj) on the modified class. Check if they should be equal, and verify neither returns empty string for non-trivial objects.",
+      "execution_mode": "bash",
+      "weight": 1.5
+    },
+    "unit_test": {
+      "prompt_addendum": "When generating unit tests, include tests for boundary conditions: None inputs, empty collections, and single-element cases. Verify that both return values AND side effects match the expected behavior."
+    },
+    "regression_check": {
+      "prompt_addendum": "Run at minimum the entire test file containing the target tests, not just individual test functions. Report the count of any newly failing tests.",
+      "weight": 1.5
+    }
+  },
+  "composition": {
+    "num_coding_agents": 3,
+    "num_oracle_rounds": 2,
+    "oracle_parallelism": "sequential",
+    "planner_guidance": "Before declaring a fix complete, always run a broader test scope (entire test file or module). Include a dedicated test_validator role that runs the full test file after the fix is applied."
+  },
+  "analysis": "## Failure Patterns Observed\n\n### pytest-dev__pytest-5413 (Test Set - Failed)\nThe target test `test_excinfo_repr_str` checks that `str(excinfo) == repr(excinfo)` returning `<ExceptionInfo ValueError tblen=4>`. The swarm changed `__str__` to return `str(self.value)` which returns an empty string for ValueError (since ValueError has no args). This shows a fundamental misunderstanding of the issue requirements.\n\n**What would have caught this:** An oracle that actually runs the target test against the patch BEFORE submission would have shown `AssertionError: assert '' == '<ExceptionInfo ValueError tblen=4>'`\n\n### sphinx-doc__sphinx-8595 (Train Set - Technically correct but test couldn't run)\nThe fix was actually correct: changing `if not self.__all__` to `if self.__all__ is None` plus handling empty `__all__`. However, the test environment was missing the 'roman' module, causing test setup failure. This is an infrastructure issue - the fix itself was valid.\n\n**Oracle implication:** Oracles should verify the test can actually execute before declaring pass/fail.\n\n### pylint-dev__pylint-7080 (Train Set - Catastrophic regression)\nThe patch caused 116 previously-passing tests to fail with UnknownMessageError. The swarm only ran targeted tests and didn't detect this massive regression. This is exactly why full test suite running is critical.\n\n**What would have caught this:** A `full_test_suite_runner` oracle that runs all tests in the test module, not just target tests.\n\n### psf__requests-2317 (Test Set - Partial success with regression)\nInterestingly, 8/8 FAIL_TO_PASS tests passed, but 1 PASS_TO_PASS test regressed (`test_mixed_case_scheme_acceptable`). This shows the fix was mostly correct but had an unintended side effect.\n\n### django__django-16379 and django__django-14915 (Both Passed)\nThese succeeded, showing the swarm CAN produce correct fixes when the scope is well-understood.\n\n## Cost/Turn Analysis\n- django__django-16379 used $1.73 over 53 turns (successful)\n- Failed tasks often had 0 turns logged, suggesting infrastructure/timeout issues\n\n## Key Insight\nThe biggest issue is NOT the coding capability - it's verification. The swarm produces plausible-looking patches but doesn't adequately verify them. The oracle system needs to:\n1. Always run broader test scope (full test file minimum)\n2. Verify test setup succeeds before evaluating fix\n3. Check that modified special methods (__str__, __repr__) return expected types\n\n## Test vs Train Score Divergence\nTrain: 1-2/3 (django tasks passed)\nTest: 0/2 (pytest and requests both had issues)\n\nThis divergence suggests the lessons from train set (Django-focused) may not generalize well. Making lessons MORE generic is critical.",
+  "train_score": 0.0,
+  "test_score": 0.0
+}
