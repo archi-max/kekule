@@ -392,7 +392,7 @@ async def solve_swe_task(
             "Task",
             "WebFetch",
         ],
-        setting_sources=["user"],
+        setting_sources=["project", "local"],
         env=env,
         max_turns=config.max_agent_turns,
         hooks=hooks,
