@@ -244,7 +244,7 @@ async def analyze_failure(
         model=model,
         permission_mode="bypassPermissions",
         allowed_tools=["Read", "Glob", "Grep", "Bash"],
-        setting_sources=["user"],
+        setting_sources=["project", "local"],
         max_turns=max_turns,
     )
 

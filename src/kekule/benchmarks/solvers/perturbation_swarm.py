@@ -337,7 +337,7 @@ async def plan_roles(
         permission_mode="bypassPermissions",
         cwd=str(repo_dir),
         allowed_tools=["Read", "Glob", "Grep", "Bash"],
-        setting_sources=["user"],
+        setting_sources=["project", "local"],
         max_turns=PLANNER_MAX_TURNS,
     )
 
@@ -550,7 +550,7 @@ async def run_swarm_agent(
         permission_mode="bypassPermissions",
         cwd=str(repo_dir),
         allowed_tools=allowed_tools,
-        setting_sources=["user"],
+        setting_sources=["project", "local"],
         env=env,
         max_turns=SWARM_AGENT_MAX_TURNS,
         hooks=hooks,

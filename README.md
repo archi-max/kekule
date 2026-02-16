@@ -48,7 +48,7 @@ Kekule runs multiple agents in parallel on real GitHub issues (SWE-bench). Each 
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/) package manager
-- Docker (for SWE-bench evaluation)
+- Docker (only needed for SWE-bench evaluation -- the swarm itself runs without Docker)
 - `ANTHROPIC_API_KEY` environment variable
 
 ### Option 1: Docker
@@ -183,10 +183,18 @@ Then visit:
 | `--test-ids` | -- | Explicit test task IDs |
 | `--train-ratio` | `0.7` | Auto train/test split ratio |
 | `--problems` | `3` | Number of problems (auto-split) |
+| `--max-parallel` | `6` | Max concurrent agents |
+| `--max-turns` | -- | Max agent turns per task (unlimited if unset) |
+| `--start-epoch` | `0` | Resume from this epoch (loads prior lessons/config) |
 | `--enable-chatoverflow` | off | Enable Q&A forum integration |
 | `--prompts-dir` | -- | Custom prompt overrides |
 | `--export-prompts` | -- | Export default prompts |
 | `--skip-eval` | off | Skip Docker evaluation |
+
+> **Important behavior notes:**
+>
+> - **`--epochs 1` skips post-run analysis.** Failure analysis and waypoint coordinator only run between epochs (to feed lessons into the next epoch). With a single epoch there is no "next epoch", so no analysis is produced. Use `--epochs 2` or more to get `failure_diagnoses.json` and `coordinator_output.json`.
+> - **`--skip-eval` reports 0% scores.** When Docker evaluation is skipped, all scores show 0/N (0.0%). Patches are still generated and oracle checks still run -- the 0% only means the SWE-bench Docker harness didn't verify them. Run eval separately afterward (see below) to get real scores., Docker is only required for evaluation, not for running the swarm itself.
 
 ### `kekule-oracle` -- Oracle Verification
 
