@@ -137,26 +137,22 @@ uv run kekule-improve --solver oracle_swarm --epochs 3 --problems 10
 
 ## Dashboard UI
 
-A full-stack web app for monitoring experiments and driving agent development.
+A web UI for browsing experiment results, failure diagnoses, and score progression across epochs.
 
-### Backend (FastAPI)
-
-```bash
-cd src/kekule/ui
-uv run uvicorn app:app --reload --port 8000
-```
-
-Routes: projects, rules, waypoints, swarm status, oracle execution, benchmark results.
-
-### Frontend (React + Vite + Tailwind)
+### Start the dashboard
 
 ```bash
-cd src/kekule/ui-frontend
-npm install
-npm run dev
+uv run python3 -m uvicorn kekule.ui.app:app --reload --port 8000
 ```
 
-Pages: project list, waypoint graph, agent monitor, benchmark results, experiment detail.
+Then visit:
+
+| Route | Description |
+|-------|-------------|
+| `/experiments` | List all self-improving experiments with score progression |
+| `/experiments/<name>` | Epoch details, coordinator output, failure diagnoses |
+| `/benchmarks` | Standalone benchmark run results |
+| `/api/experiments` | JSON API for programmatic access |
 
 ---
 
