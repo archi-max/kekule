@@ -1,0 +1,3 @@
+{
+  "summary": "1 test(s) that should have been fixed are still failing: tests/test_self.py::TestRunTC::test_ignore_path_recursive_current_dir 116 previously passing test(s) now fail (regressions): tests/test_self.py::TestRunTC::test_pkginfo, tests/test_self.py::TestRunTC::test_all, tests/test_self.py::TestRunTC::test_no_ext_file..."
+}

@@ -1,0 +1,38 @@
+diff --git a/requests/sessions.py b/requests/sessions.py
+index d701ff2..adcfbac 100644
+--- a/requests/sessions.py
++++ b/requests/sessions.py
+@@ -425,7 +425,7 @@ class Session(SessionRedirectMixin):
+             If Tuple, ('cert', 'key') pair.
+         """
+ 
+-        method = builtin_str(method)
++        method = to_native_string(method)
+ 
+         # Create the Request.
+         req = Request(
+diff --git a/test_requests.py b/test_requests.py
+index 467c5bc..f0aadc7 100755
+--- a/test_requests.py
++++ b/test_requests.py
+@@ -523,6 +523,20 @@ class RequestsTestCase(unittest.TestCase):
+             method=u('POST'), url=httpbin('post'), files=files)
+         assert r.status_code == 200
+ 
++    def test_request_with_bytestring_method(self):
++        """Ensure that bytestring method names are properly decoded to strings.
++
++        When a library passes method as b'GET' instead of 'GET', it should be
++        properly decoded to 'GET', not converted to the literal string "b'GET'".
++
++        See https://github.com/kennethreitz/requests/issues/2317
++        """
++        req = requests.Request(b'GET', httpbin('get'))
++        s = requests.Session()
++        prep = s.prepare_request(req)
++        # The method should be 'GET', not "b'GET'" or "B'GET'"
++        assert prep.method == 'GET'
++
+     def test_custom_content_type(self):
+         r = requests.post(
+             httpbin('post'),

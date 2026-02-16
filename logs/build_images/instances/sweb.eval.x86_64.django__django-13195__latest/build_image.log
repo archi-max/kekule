@@ -1,0 +1,265 @@
+2026-02-16 03:54:30,042 - INFO - Building image sweb.eval.x86_64.django__django-13195:latest
+Using dockerfile:
+FROM --platform=linux/x86_64 sweb.env.py.x86_64.e83e37f52c09532c62acfb:latest
+
+COPY ./setup_repo.sh /root/
+RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+RUN /bin/bash /root/setup_repo.sh
+
+WORKDIR /testbed/
+
+Adding (1) setup scripts to image build repo
+2026-02-16 03:54:30,042 - INFO - [SETUP SCRIPT] setup_repo.sh:
+#!/bin/bash
+set -euxo pipefail
+git clone -o origin  --single-branch https://github.com/django/django /testbed
+chmod -R 777 /testbed
+cd /testbed
+git reset --hard 156a2138db20abc89933121e4ff2ee2ce56a173a
+git remote remove origin
+TARGET_TIMESTAMP=$(git show -s --format=%ci 156a2138db20abc89933121e4ff2ee2ce56a173a)
+git tag -l | while read tag; do TAG_COMMIT=$(git rev-list -n 1 "$tag"); TAG_TIME=$(git show -s --format=%ci "$TAG_COMMIT"); if [[ "$TAG_TIME" > "$TARGET_TIMESTAMP" ]]; then git tag -d "$tag"; fi; done
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+AFTER_TIMESTAMP=$(date -d "$TARGET_TIMESTAMP + 1 second" '+%Y-%m-%d %H:%M:%S')
+COMMIT_COUNT=$(git log --oneline --all --since="$AFTER_TIMESTAMP" | wc -l)
+[ "$COMMIT_COUNT" -eq 0 ] || exit 1
+source /opt/miniconda3/bin/activate
+conda activate testbed
+echo "Current environment: $CONDA_DEFAULT_ENV"
+python -m pip install -e .
+git config --global user.email setup@swebench.config
+git config --global user.name SWE-bench
+git commit --allow-empty -am SWE-bench
+
+2026-02-16 03:54:30,043 - INFO - Building docker image sweb.eval.x86_64.django__django-13195:latest in logs/build_images/instances/sweb.eval.x86_64.django__django-13195__latest with platform linux/x86_64
+2026-02-16 03:54:33,110 - INFO - Step 1/5 : FROM --platform=linux/x86_64 sweb.env.py.x86_64.e83e37f52c09532c62acfb:latest
+2026-02-16 03:54:33,111 - INFO - 
+2026-02-16 03:54:33,167 - INFO - ---> 33c7e9b08e15
+2026-02-16 03:54:33,175 - INFO - Step 2/5 : COPY ./setup_repo.sh /root/
+2026-02-16 03:54:33,175 - INFO - 
+2026-02-16 03:55:04,118 - INFO - ---> 08d48c3d4a12
+2026-02-16 03:55:04,118 - INFO - Step 3/5 : RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+2026-02-16 03:55:04,118 - INFO - 
+2026-02-16 03:55:04,455 - INFO - ---> Running in aedecf384294
+2026-02-16 03:55:22,270 - INFO - ---> Removed intermediate container aedecf384294
+2026-02-16 03:55:22,270 - INFO - ---> 65b63d44ce74
+2026-02-16 03:55:22,270 - INFO - Step 4/5 : RUN /bin/bash /root/setup_repo.sh
+2026-02-16 03:55:22,270 - INFO - 
+2026-02-16 03:55:22,558 - INFO - ---> Running in d3e50db04c71
+2026-02-16 03:55:23,262 - INFO - + git clone -o origin --single-branch https://github.com/django/django /testbed
+2026-02-16 03:55:23,266 - INFO - Cloning into '/testbed'...
+2026-02-16 03:57:02,300 - INFO - Updating files:  13% (960/7016)
+2026-02-16 03:57:02,313 - INFO - Updating files:  14% (983/7016)
+2026-02-16 03:57:02,385 - INFO - Updating files:  15% (1053/7016)
+2026-02-16 03:57:02,496 - INFO - Updating files:  16% (1123/7016)
+2026-02-16 03:57:02,584 - INFO - Updating files:  17% (1193/7016)
+2026-02-16 03:57:02,684 - INFO - Updating files:  18% (1263/7016)
+2026-02-16 03:57:02,832 - INFO - Updating files:  19% (1334/7016)
+2026-02-16 03:57:02,934 - INFO - Updating files:  20% (1404/7016)
+2026-02-16 03:57:02,991 - INFO - Updating files:  21% (1474/7016)
+2026-02-16 03:57:03,127 - INFO - Updating files:  22% (1544/7016)
+2026-02-16 03:57:03,254 - INFO - Updating files:  23% (1614/7016)
+2026-02-16 03:57:03,300 - INFO - Updating files:  23% (1634/7016)
+2026-02-16 03:57:03,363 - INFO - Updating files:  24% (1684/7016)
+2026-02-16 03:57:03,479 - INFO - Updating files:  25% (1754/7016)
+2026-02-16 03:57:03,593 - INFO - Updating files:  26% (1825/7016)
+2026-02-16 03:57:03,654 - INFO - Updating files:  27% (1895/7016)
+2026-02-16 03:57:03,702 - INFO - Updating files:  28% (1965/7016)
+2026-02-16 03:57:03,763 - INFO - Updating files:  29% (2035/7016)
+2026-02-16 03:57:03,870 - INFO - Updating files:  30% (2105/7016)
+2026-02-16 03:57:04,028 - INFO - Updating files:  31% (2175/7016)
+2026-02-16 03:57:04,144 - INFO - Updating files:  32% (2246/7016)
+2026-02-16 03:57:04,271 - INFO - Updating files:  33% (2316/7016)
+2026-02-16 03:57:04,301 - INFO - Updating files:  33% (2323/7016)
+2026-02-16 03:57:04,400 - INFO - Updating files:  34% (2386/7016)
+2026-02-16 03:57:04,481 - INFO - Updating files:  35% (2456/7016)
+2026-02-16 03:57:04,683 - INFO - Updating files:  36% (2526/7016)
+2026-02-16 03:57:04,814 - INFO - Updating files:  37% (2596/7016)
+2026-02-16 03:57:04,913 - INFO - Updating files:  38% (2667/7016)
+2026-02-16 03:57:04,987 - INFO - Updating files:  39% (2737/7016)
+2026-02-16 03:57:05,079 - INFO - Updating files:  40% (2807/7016)
+2026-02-16 03:57:05,168 - INFO - Updating files:  41% (2877/7016)
+2026-02-16 03:57:05,239 - INFO - Updating files:  42% (2947/7016)
+2026-02-16 03:57:05,289 - INFO - Updating files:  42% (2985/7016)
+2026-02-16 03:57:05,317 - INFO - Updating files:  43% (3017/7016)
+2026-02-16 03:57:05,402 - INFO - Updating files:  44% (3088/7016)
+2026-02-16 03:57:05,525 - INFO - Updating files:  45% (3158/7016)
+2026-02-16 03:57:05,573 - INFO - Updating files:  46% (3228/7016)
+2026-02-16 03:57:05,612 - INFO - Updating files:  47% (3298/7016)
+2026-02-16 03:57:05,635 - INFO - Updating files:  48% (3368/7016)
+2026-02-16 03:57:05,672 - INFO - Updating files:  49% (3438/7016)
+2026-02-16 03:57:05,721 - INFO - Updating files:  50% (3508/7016)
+2026-02-16 03:57:05,768 - INFO - Updating files:  51% (3579/7016)
+2026-02-16 03:57:05,783 - INFO - Updating files:  52% (3649/7016)
+2026-02-16 03:57:05,817 - INFO - Updating files:  53% (3719/7016)
+2026-02-16 03:57:05,858 - INFO - Updating files:  54% (3789/7016)
+2026-02-16 03:57:05,900 - INFO - Updating files:  55% (3859/7016)
+2026-02-16 03:57:05,945 - INFO - Updating files:  56% (3929/7016)
+2026-02-16 03:57:05,980 - INFO - Updating files:  57% (4000/7016)
+2026-02-16 03:57:06,003 - INFO - Updating files:  58% (4070/7016)
+2026-02-16 03:57:06,003 - INFO - Updating files:  59% (4140/7016)
+2026-02-16 03:57:06,039 - INFO - Updating files:  60% (4210/7016)
+2026-02-16 03:57:06,050 - INFO - Updating files:  61% (4280/7016)
+2026-02-16 03:57:06,065 - INFO - Updating files:  62% (4350/7016)
+2026-02-16 03:57:06,122 - INFO - Updating files:  63% (4421/7016)
+2026-02-16 03:57:06,157 - INFO - Updating files:  64% (4491/7016)
+2026-02-16 03:57:06,203 - INFO - Updating files:  65% (4561/7016)
+2026-02-16 03:57:06,256 - INFO - Updating files:  66% (4631/7016)
+2026-02-16 03:57:06,278 - INFO - Updating files:  66% (4652/7016)
+2026-02-16 03:57:06,361 - INFO - Updating files:  67% (4701/7016)
+2026-02-16 03:57:06,362 - INFO - Updating files:  68% (4771/7016)
+2026-02-16 03:57:06,411 - INFO - Updating files:  69% (4842/7016)
+2026-02-16 03:57:06,462 - INFO - Updating files:  70% (4912/7016)
+2026-02-16 03:57:06,504 - INFO - Updating files:  71% (4982/7016)
+2026-02-16 03:57:06,548 - INFO - Updating files:  72% (5052/7016)
+2026-02-16 03:57:06,583 - INFO - Updating files:  73% (5122/7016)
+2026-02-16 03:57:06,622 - INFO - Updating files:  74% (5192/7016)
+2026-02-16 03:57:06,671 - INFO - Updating files:  75% (5262/7016)
+2026-02-16 03:57:06,717 - INFO - Updating files:  76% (5333/7016)
+2026-02-16 03:57:06,778 - INFO - Updating files:  77% (5403/7016)
+2026-02-16 03:57:06,829 - INFO - Updating files:  78% (5473/7016)
+2026-02-16 03:57:06,938 - INFO - Updating files:  79% (5543/7016)
+2026-02-16 03:57:07,086 - INFO - Updating files:  80% (5613/7016)
+2026-02-16 03:57:07,154 - INFO - Updating files:  81% (5683/7016)
+2026-02-16 03:57:07,231 - INFO - Updating files:  82% (5754/7016)
+2026-02-16 03:57:07,284 - INFO - Updating files:  82% (5781/7016)
+2026-02-16 03:57:07,364 - INFO - Updating files:  83% (5824/7016)
+2026-02-16 03:57:07,530 - INFO - Updating files:  84% (5894/7016)
+2026-02-16 03:57:07,588 - INFO - Updating files:  85% (5964/7016)
+2026-02-16 03:57:07,637 - INFO - Updating files:  86% (6034/7016)
+2026-02-16 03:57:07,728 - INFO - Updating files:  87% (6104/7016)
+2026-02-16 03:57:07,799 - INFO - Updating files:  88% (6175/7016)
+2026-02-16 03:57:07,863 - INFO - Updating files:  89% (6245/7016)
+2026-02-16 03:57:07,944 - INFO - Updating files:  90% (6315/7016)
+2026-02-16 03:57:07,996 - INFO - Updating files:  91% (6385/7016)
+2026-02-16 03:57:08,049 - INFO - Updating files:  92% (6455/7016)
+2026-02-16 03:57:08,066 - INFO - Updating files:  93% (6525/7016)
+2026-02-16 03:57:08,098 - INFO - Updating files:  94% (6596/7016)
+2026-02-16 03:57:08,131 - INFO - Updating files:  95% (6666/7016)
+2026-02-16 03:57:08,182 - INFO - Updating files:  96% (6736/7016)
+2026-02-16 03:57:08,210 - INFO - Updating files:  97% (6806/7016)
+2026-02-16 03:57:08,243 - INFO - Updating files:  98% (6876/7016)
+2026-02-16 03:57:08,285 - INFO - Updating files:  99% (6946/7016)
+2026-02-16 03:57:08,285 - INFO - Updating files:  99% (6947/7016)
+2026-02-16 03:57:08,371 - INFO - Updating files: 100% (7016/7016)
+2026-02-16 03:57:08,371 - INFO - Updating files: 100% (7016/7016), done.
+2026-02-16 03:57:08,417 - INFO - + chmod -R 777 /testbed
+2026-02-16 03:57:08,711 - INFO - + cd /testbed
+2026-02-16 03:57:08,722 - INFO - + git reset --hard 156a2138db20abc89933121e4ff2ee2ce56a173a
+2026-02-16 03:57:09,833 - INFO - Updating files:  43% (3112/7090)
+2026-02-16 03:57:09,833 - INFO - Updating files:  44% (3120/7090)
+2026-02-16 03:57:09,867 - INFO - Updating files:  45% (3191/7090)
+2026-02-16 03:57:09,904 - INFO - Updating files:  46% (3262/7090)
+2026-02-16 03:57:09,918 - INFO - Updating files:  47% (3333/7090)
+2026-02-16 03:57:09,984 - INFO - Updating files:  48% (3404/7090)
+2026-02-16 03:57:09,984 - INFO - Updating files:  49% (3475/7090)
+2026-02-16 03:57:10,018 - INFO - Updating files:  50% (3545/7090)
+2026-02-16 03:57:10,046 - INFO - Updating files:  51% (3616/7090)
+2026-02-16 03:57:10,078 - INFO - Updating files:  52% (3687/7090)
+2026-02-16 03:57:10,081 - INFO - Updating files:  53% (3758/7090)
+2026-02-16 03:57:10,108 - INFO - Updating files:  54% (3829/7090)
+2026-02-16 03:57:10,143 - INFO - Updating files:  55% (3900/7090)
+2026-02-16 03:57:10,182 - INFO - Updating files:  56% (3971/7090)
+2026-02-16 03:57:10,263 - INFO - Updating files:  57% (4042/7090)
+2026-02-16 03:57:10,315 - INFO - Updating files:  58% (4113/7090)
+2026-02-16 03:57:10,375 - INFO - Updating files:  59% (4184/7090)
+2026-02-16 03:57:10,448 - INFO - Updating files:  60% (4254/7090)
+2026-02-16 03:57:10,501 - INFO - Updating files:  61% (4325/7090)
+2026-02-16 03:57:10,623 - INFO - Updating files:  62% (4396/7090)
+2026-02-16 03:57:10,724 - INFO - Updating files:  63% (4467/7090)
+2026-02-16 03:57:10,851 - INFO - Updating files:  63% (4483/7090)
+2026-02-16 03:57:10,939 - INFO - Updating files:  64% (4538/7090)
+2026-02-16 03:57:10,971 - INFO - Updating files:  65% (4609/7090)
+2026-02-16 03:57:11,028 - INFO - Updating files:  66% (4680/7090)
+2026-02-16 03:57:11,130 - INFO - Updating files:  67% (4751/7090)
+2026-02-16 03:57:11,194 - INFO - Updating files:  68% (4822/7090)
+2026-02-16 03:57:11,233 - INFO - Updating files:  69% (4893/7090)
+2026-02-16 03:57:11,364 - INFO - Updating files:  70% (4963/7090)
+2026-02-16 03:57:11,426 - INFO - Updating files:  71% (5034/7090)
+2026-02-16 03:57:11,476 - INFO - Updating files:  72% (5105/7090)
+2026-02-16 03:57:11,498 - INFO - Updating files:  73% (5176/7090)
+2026-02-16 03:57:11,545 - INFO - Updating files:  74% (5247/7090)
+2026-02-16 03:57:11,569 - INFO - Updating files:  75% (5318/7090)
+2026-02-16 03:57:11,616 - INFO - Updating files:  76% (5389/7090)
+2026-02-16 03:57:11,636 - INFO - Updating files:  77% (5460/7090)
+2026-02-16 03:57:11,663 - INFO - Updating files:  78% (5531/7090)
+2026-02-16 03:57:11,706 - INFO - Updating files:  79% (5602/7090)
+2026-02-16 03:57:11,762 - INFO - Updating files:  80% (5672/7090)
+2026-02-16 03:57:11,764 - INFO - Updating files:  81% (5743/7090)
+2026-02-16 03:57:11,781 - INFO - Updating files:  82% (5814/7090)
+2026-02-16 03:57:11,841 - INFO - Updating files:  83% (5885/7090)
+2026-02-16 03:57:11,842 - INFO - Updating files:  83% (5911/7090)
+2026-02-16 03:57:11,888 - INFO - Updating files:  84% (5956/7090)
+2026-02-16 03:57:11,927 - INFO - Updating files:  85% (6027/7090)
+2026-02-16 03:57:11,960 - INFO - Updating files:  86% (6098/7090)
+2026-02-16 03:57:12,024 - INFO - Updating files:  87% (6169/7090)
+2026-02-16 03:57:12,042 - INFO - Updating files:  88% (6240/7090)
+2026-02-16 03:57:12,116 - INFO - Updating files:  89% (6311/7090)
+2026-02-16 03:57:12,175 - INFO - Updating files:  90% (6381/7090)
+2026-02-16 03:57:12,283 - INFO - Updating files:  91% (6452/7090)
+2026-02-16 03:57:12,325 - INFO - Updating files:  92% (6523/7090)
+2026-02-16 03:57:12,363 - INFO - Updating files:  93% (6594/7090)
+2026-02-16 03:57:12,378 - INFO - Updating files:  94% (6665/7090)
+2026-02-16 03:57:12,401 - INFO - Updating files:  95% (6736/7090)
+2026-02-16 03:57:12,435 - INFO - Updating files:  96% (6807/7090)
+2026-02-16 03:57:12,486 - INFO - Updating files:  97% (6878/7090)
+2026-02-16 03:57:12,486 - INFO - Updating files:  98% (6949/7090)
+2026-02-16 03:57:12,521 - INFO - Updating files:  99% (7020/7090)
+2026-02-16 03:57:12,567 - INFO - Updating files: 100% (7090/7090)Updating files: 100% (7090/7090), done.
+2026-02-16 03:57:12,627 - INFO - HEAD is now at 156a2138db Refs #30446 -- Removed unnecessary Value(..., output_field) in docs and tests.
+2026-02-16 03:57:12,678 - INFO - + git remote remove origin
+2026-02-16 03:57:12,762 - INFO - ++ git show -s --format=%ci 156a2138db20abc89933121e4ff2ee2ce56a173a
+2026-02-16 03:57:12,766 - INFO - + TARGET_TIMESTAMP='2020-07-15 10:58:38 +0200'
++ git tag -l
+2026-02-16 03:57:12,780 - INFO - + read tag
+++ git rev-list -n 1 1.0
+2026-02-16 03:57:12,781 - INFO - + TAG_COMMIT=42ef6557a9b88cfc277eb79ddb980e1c62add144
+2026-02-16 03:57:12,804 - INFO - ++ git show -s --format=%ci 42ef6557a9b88cfc277eb79ddb980e1c62add144
+2026-02-16 03:57:12,804 - INFO - + TAG_TIME='2008-09-03 23:38:45 +0000'
++ [[ 2008-09-03 23:38:45 +0000 > 2020-07-15 10:58:38 +0200 ]]
++ read tag
+++ git rev-list -n 1 1.1
+2026-02-16 03:57:12,823 - INFO - + TAG_COMMIT=27358368879cc7d56756f12155393d3277fc52aa
+2026-02-16 03:57:12,824 - INFO - ++ git show -s --format=%ci 27358368879cc7d56756f12155393d3277fc52aa
+2026-02-16 03:57:12,833 - INFO - + TAG_TIME='2009-07-29 05:51:03 +0000'
+2026-02-16 03:57:12,833 - INFO - + [[ 2009-07-29 05:51:03 +0000 > 2020-07-15 10:58:38 +0200 ]]
++ read tag
+2026-02-16 03:57:12,851 - INFO - ++ git rev-list -n 1 1.2
+2026-02-16 03:57:12,852 - INFO - + TAG_COMMIT=6276167b728256b59071781b2f40d3f48f85cbbe
+2026-02-16 03:57:12,852 - INFO - ++ git show -s --format=%ci 6276167b728256b59071781b2f40d3f48f85cbbe
+2026-02-16 03:57:12,882 - INFO - + TAG_TIME='2010-05-17 17:31:49 +0000'
++ [[ 2010-05-17 17:31:49 +0000 > 2020-07-15 10:58:38 +0200 ]]
++ read tag
+++ git rev-list -n 1 1.2.1
+2026-02-16 03:57:12,883 - INFO - + TAG_COMMIT=6cffb9b8804278c4a617109e65493dc782ef2f7d
+2026-02-16 03:57:12,883 - INFO - ++ git show -s --format=%ci 6cffb9b8804278c4a617109e65493dc782ef2f7d
+2026-02-16 03:57:12,883 - INFO - + TAG_TIME='2010-05-24 19:10:30 +0000'
++ [[ 2010-05-24 19:10:30 +0000 > 2020-07-15 10:58:38 +0200 ]]
++ read tag
+2026-02-16 03:57:12,900 - INFO - ++ git rev-list -n 1 1.3
+2026-02-16 03:57:12,920 - INFO - + TAG_COMMIT=7c08f4c6351f7e53a01ff800d8a61f19ca961b29
+2026-02-16 03:57:12,920 - INFO - ++ git show -s --format=%ci 7c08f4c6351f7e53a01ff800d8a61f19ca961b29
+2026-02-16 03:57:12,951 - INFO - + TAG_TIME='2011-03-23 05:06:31 +0000'
++ [[ 2011-03-23 05:06:31 +0000 > 2020-07-15 10:58:38 +0200 ]]
++ read tag
+2026-02-16 03:57:12,951 - INFO - ++ git rev-list -n 1 1.4
+2026-02-16 03:57:12,951 - INFO - + TAG_COMMIT=2591fb8d4c0246f68b79554976c012039df75359
+++ git show -s --format=%ci 2591fb8d4c0246f68b79554976c012039df75359
+2026-02-16 03:57:12,987 - INFO - + TAG_TIME='2012-03-23 16:53:23 +0000'
+2026-02-16 03:57:13,016 - INFO - + [[ 2012-03-23 16:53:23 +0000 > 2020-07-15 10:58:38 +0200 ]]
++ read tag
+2026-02-16 03:57:13,016 - INFO - ++ git rev-list -n 1 1.7a1
+2026-02-16 03:57:13,016 - INFO - + TAG_COMMIT=8be9a250c190d9dd8615da4616cdfe401ad6e0af
+++ git show -s --format=%ci 8be9a250c190d9dd8615da4616cdfe401ad6e0af
++ TAG_TIME='2014-01-22 21:48:37 -0600'
++ [[ 2014-01-22 21:48:37 -0600 > 2020-07-15 10:58:38 +0200 ]]
++ read tag
+++ git rev-list -n 1 1.7a2
+2026-02-16 03:57:13,016 - INFO - + TAG_COMMIT=43510cffcbf64e73232da1d6209151c7232fd2b6
+2026-02-16 03:57:13,016 - INFO - ++ git show -s --format=%ci 43510cffcbf64e73232da1d6209151c7232fd2b6
++ TAG_TIME='2014-02-06 15:54:27 -0600'
++ [[ 2014-02-06 15:54:27 -0600 > 2020-07-15 10:58:38 +0200 ]]
++ read tag
+2026-02-16 03:57:13,016 - INFO - + git reflog expire --expire=now --all
+2026-02-16 03:57:13,038 - INFO - + git gc --prune=now --aggressive

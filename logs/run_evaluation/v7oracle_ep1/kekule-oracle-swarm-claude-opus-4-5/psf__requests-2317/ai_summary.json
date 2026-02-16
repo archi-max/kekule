@@ -1,0 +1,3 @@
+{
+  "summary": "1 previously passing test(s) now fail (regressions): test_requests.py::RequestsTestCase::test_mixed_case_scheme_acceptable"
+}

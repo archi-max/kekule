@@ -1,0 +1,70 @@
+2026-02-16 04:08:20,102 - INFO - Building image sweb.eval.x86_64.django__django-11400:latest
+Using dockerfile:
+FROM --platform=linux/x86_64 sweb.env.py.x86_64.2baaea72acc974f6c02079:latest
+
+COPY ./setup_repo.sh /root/
+RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+RUN /bin/bash /root/setup_repo.sh
+
+WORKDIR /testbed/
+
+Adding (1) setup scripts to image build repo
+2026-02-16 04:08:20,103 - INFO - [SETUP SCRIPT] setup_repo.sh:
+#!/bin/bash
+set -euxo pipefail
+git clone -o origin  --single-branch https://github.com/django/django /testbed
+chmod -R 777 /testbed
+cd /testbed
+git reset --hard 1f8382d34d54061eddc41df6994e20ee38c60907
+git remote remove origin
+TARGET_TIMESTAMP=$(git show -s --format=%ci 1f8382d34d54061eddc41df6994e20ee38c60907)
+git tag -l | while read tag; do TAG_COMMIT=$(git rev-list -n 1 "$tag"); TAG_TIME=$(git show -s --format=%ci "$TAG_COMMIT"); if [[ "$TAG_TIME" > "$TARGET_TIMESTAMP" ]]; then git tag -d "$tag"; fi; done
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+AFTER_TIMESTAMP=$(date -d "$TARGET_TIMESTAMP + 1 second" '+%Y-%m-%d %H:%M:%S')
+COMMIT_COUNT=$(git log --oneline --all --since="$AFTER_TIMESTAMP" | wc -l)
+[ "$COMMIT_COUNT" -eq 0 ] || exit 1
+source /opt/miniconda3/bin/activate
+conda activate testbed
+echo "Current environment: $CONDA_DEFAULT_ENV"
+python -m pip install -e .
+git config --global user.email setup@swebench.config
+git config --global user.name SWE-bench
+git commit --allow-empty -am SWE-bench
+
+2026-02-16 04:08:20,103 - INFO - Building docker image sweb.eval.x86_64.django__django-11400:latest in logs/build_images/instances/sweb.eval.x86_64.django__django-11400__latest with platform linux/x86_64
+2026-02-16 04:08:23,536 - INFO - Step 1/5 : FROM --platform=linux/x86_64 sweb.env.py.x86_64.2baaea72acc974f6c02079:latest
+2026-02-16 04:08:23,536 - INFO - 
+2026-02-16 04:08:23,648 - INFO - ---> a1b6061353bc
+2026-02-16 04:08:23,648 - INFO - Step 2/5 : COPY ./setup_repo.sh /root/
+2026-02-16 04:08:23,648 - INFO - 
+2026-02-16 04:08:39,465 - INFO - ---> b4c379cdfa98
+2026-02-16 04:08:39,465 - INFO - Step 3/5 : RUN sed -i -e 's/\r$//' /root/setup_repo.sh
+2026-02-16 04:08:39,465 - INFO - 
+2026-02-16 04:08:39,673 - INFO - ---> Running in b8757b45233b
+2026-02-16 04:08:55,386 - INFO - ---> Removed intermediate container b8757b45233b
+2026-02-16 04:08:55,386 - INFO - ---> 8ac74f5342b4
+2026-02-16 04:08:55,386 - INFO - Step 4/5 : RUN /bin/bash /root/setup_repo.sh
+2026-02-16 04:08:55,387 - INFO - 
+2026-02-16 04:08:55,624 - INFO - ---> Running in f9e4f966df07
+2026-02-16 04:08:55,999 - INFO - + git clone -o origin --single-branch https://github.com/django/django /testbed
+2026-02-16 04:08:56,003 - INFO - Cloning into '/testbed'...
+2026-02-16 04:09:55,016 - INFO - Updating files:  16% (1124/7016)
+2026-02-16 04:09:55,098 - INFO - Updating files:  17% (1193/7016)
+2026-02-16 04:09:55,150 - INFO - Updating files:  18% (1263/7016)
+2026-02-16 04:09:55,266 - INFO - Updating files:  19% (1334/7016)
+2026-02-16 04:09:55,372 - INFO - Updating files:  20% (1404/7016)
+2026-02-16 04:09:55,533 - INFO - Updating files:  21% (1474/7016)
+2026-02-16 04:09:55,618 - INFO - Updating files:  22% (1544/7016)
+2026-02-16 04:09:55,723 - INFO - Updating files:  23% (1614/7016)
+2026-02-16 04:09:55,812 - INFO - Updating files:  24% (1684/7016)
+2026-02-16 04:09:55,926 - INFO - Updating files:  25% (1754/7016)
+2026-02-16 04:09:56,013 - INFO - Updating files:  26% (1825/7016)
+2026-02-16 04:09:56,019 - INFO - Updating files:  26% (1829/7016)
+2026-02-16 04:09:56,081 - INFO - Updating files:  27% (1895/7016)
+2026-02-16 04:09:56,103 - INFO - Updating files:  28% (1965/7016)
+2026-02-16 04:09:56,171 - INFO - Updating files:  29% (2035/7016)
+2026-02-16 04:09:56,258 - INFO - Updating files:  30% (2105/7016)
+2026-02-16 04:09:56,368 - INFO - Updating files:  31% (2175/7016)
+2026-02-16 04:09:56,459 - INFO - Updating files:  32% (2246/7016)
+2026-02-16 04:09:56,555 - INFO - Updating files:  33% (2316/7016)

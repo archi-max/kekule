@@ -1,0 +1,869 @@
+{
+  "rules": [
+    {
+      "id": "calc_add_correct_results",
+      "description": "Calculator.add must return the mathematically correct sum of two numbers (a + b)",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "add",
+        "test_cases": [
+          {
+            "input": {
+              "a": 2,
+              "b": 3
+            },
+            "expected": 5
+          },
+          {
+            "input": {
+              "a": -5,
+              "b": 10
+            },
+            "expected": 5
+          },
+          {
+            "input": {
+              "a": 0,
+              "b": 0
+            },
+            "expected": 0
+          },
+          {
+            "input": {
+              "a": 1.5,
+              "b": 2.5
+            },
+            "expected": 4.0
+          },
+          {
+            "input": {
+              "a": -10,
+              "b": -20
+            },
+            "expected": -30
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_subtract_correct_results",
+      "description": "Calculator.subtract must return the mathematically correct difference (a - b)",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "subtract",
+        "test_cases": [
+          {
+            "input": {
+              "a": 10,
+              "b": 3
+            },
+            "expected": 7
+          },
+          {
+            "input": {
+              "a": 5,
+              "b": 10
+            },
+            "expected": -5
+          },
+          {
+            "input": {
+              "a": 0,
+              "b": 0
+            },
+            "expected": 0
+          },
+          {
+            "input": {
+              "a": 7.5,
+              "b": 2.5
+            },
+            "expected": 5.0
+          },
+          {
+            "input": {
+              "a": -10,
+              "b": -5
+            },
+            "expected": -5
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_multiply_correct_results",
+      "description": "Calculator.multiply must return the mathematically correct product of two numbers (a * b)",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "multiply",
+        "test_cases": [
+          {
+            "input": {
+              "a": 2,
+              "b": 3
+            },
+            "expected": 6
+          },
+          {
+            "input": {
+              "a": -5,
+              "b": 4
+            },
+            "expected": -20
+          },
+          {
+            "input": {
+              "a": 0,
+              "b": 100
+            },
+            "expected": 0
+          },
+          {
+            "input": {
+              "a": 2.5,
+              "b": 4
+            },
+            "expected": 10.0
+          },
+          {
+            "input": {
+              "a": -3,
+              "b": -7
+            },
+            "expected": 21
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_divide_correct_results",
+      "description": "Calculator.divide must return the mathematically correct quotient (a / b) for valid non-zero divisors",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "divide",
+        "test_cases": [
+          {
+            "input": {
+              "a": 10,
+              "b": 2
+            },
+            "expected": 5.0
+          },
+          {
+            "input": {
+              "a": 15,
+              "b": 3
+            },
+            "expected": 5.0
+          },
+          {
+            "input": {
+              "a": 7,
+              "b": 2
+            },
+            "expected": 3.5
+          },
+          {
+            "input": {
+              "a": -10,
+              "b": 2
+            },
+            "expected": -5.0
+          },
+          {
+            "input": {
+              "a": 0,
+              "b": 5
+            },
+            "expected": 0.0
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_divide_by_zero_raises_error",
+      "description": "Calculator.divide must raise ZeroDivisionError with message 'Cannot divide by zero' when b is 0",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "divide",
+        "test_cases": [
+          {
+            "input": {
+              "a": 10,
+              "b": 0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot divide by zero"
+          },
+          {
+            "input": {
+              "a": 0,
+              "b": 0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot divide by zero"
+          },
+          {
+            "input": {
+              "a": -5,
+              "b": 0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot divide by zero"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_power_correct_results",
+      "description": "Calculator.power must return the mathematically correct result of base raised to exponent (base ** exponent)",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "power",
+        "test_cases": [
+          {
+            "input": {
+              "base": 2,
+              "exponent": 3
+            },
+            "expected": 8
+          },
+          {
+            "input": {
+              "base": 5,
+              "exponent": 2
+            },
+            "expected": 25
+          },
+          {
+            "input": {
+              "base": 10,
+              "exponent": 0
+            },
+            "expected": 1
+          },
+          {
+            "input": {
+              "base": 2,
+              "exponent": -1
+            },
+            "expected": 0.5
+          },
+          {
+            "input": {
+              "base": 4,
+              "exponent": 0.5
+            },
+            "expected": 2.0
+          },
+          {
+            "input": {
+              "base": -2,
+              "exponent": 2
+            },
+            "expected": 4
+          }
+        ]
+      },
+      "uncertainty": 0.1,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_modulo_correct_results",
+      "description": "Calculator.modulo must return the mathematically correct modulo result (a % b) for valid non-zero divisors",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "modulo",
+        "test_cases": [
+          {
+            "input": {
+              "a": 10,
+              "b": 3
+            },
+            "expected": 1
+          },
+          {
+            "input": {
+              "a": 15,
+              "b": 4
+            },
+            "expected": 3
+          },
+          {
+            "input": {
+              "a": 7,
+              "b": 7
+            },
+            "expected": 0
+          },
+          {
+            "input": {
+              "a": 10.5,
+              "b": 2
+            },
+            "expected": 0.5
+          },
+          {
+            "input": {
+              "a": -10,
+              "b": 3
+            },
+            "expected": 2
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_modulo_by_zero_raises_error",
+      "description": "Calculator.modulo must raise ZeroDivisionError with message 'Cannot modulo by zero' when b is 0",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "modulo",
+        "test_cases": [
+          {
+            "input": {
+              "a": 10,
+              "b": 0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot modulo by zero"
+          },
+          {
+            "input": {
+              "a": 0,
+              "b": 0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot modulo by zero"
+          },
+          {
+            "input": {
+              "a": -5,
+              "b": 0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot modulo by zero"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_celsius_to_fahrenheit_correct",
+      "description": "TemperatureConverter.celsius_to_fahrenheit must return correct conversion using formula (celsius * 9/5) + 32",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "method": "celsius_to_fahrenheit",
+        "test_cases": [
+          {
+            "input": {
+              "celsius": 0
+            },
+            "expected": 32.0
+          },
+          {
+            "input": {
+              "celsius": 100
+            },
+            "expected": 212.0
+          },
+          {
+            "input": {
+              "celsius": -40
+            },
+            "expected": -40.0
+          },
+          {
+            "input": {
+              "celsius": 37
+            },
+            "expected": 98.6
+          },
+          {
+            "input": {
+              "celsius": 25
+            },
+            "expected": 77.0
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_fahrenheit_to_celsius_correct",
+      "description": "TemperatureConverter.fahrenheit_to_celsius must return correct conversion using formula (fahrenheit - 32) * 5/9",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "method": "fahrenheit_to_celsius",
+        "test_cases": [
+          {
+            "input": {
+              "fahrenheit": 32
+            },
+            "expected": 0.0
+          },
+          {
+            "input": {
+              "fahrenheit": 212
+            },
+            "expected": 100.0
+          },
+          {
+            "input": {
+              "fahrenheit": -40
+            },
+            "expected": -40.0
+          },
+          {
+            "input": {
+              "fahrenheit": 98.6
+            },
+            "expected": 37.0
+          },
+          {
+            "input": {
+              "fahrenheit": 77
+            },
+            "expected": 25.0
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_celsius_to_kelvin_correct",
+      "description": "TemperatureConverter.celsius_to_kelvin must return correct conversion using formula celsius + 273.15 for valid temperatures",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "method": "celsius_to_kelvin",
+        "test_cases": [
+          {
+            "input": {
+              "celsius": 0
+            },
+            "expected": 273.15
+          },
+          {
+            "input": {
+              "celsius": 100
+            },
+            "expected": 373.15
+          },
+          {
+            "input": {
+              "celsius": -273.15
+            },
+            "expected": 0.0
+          },
+          {
+            "input": {
+              "celsius": 25
+            },
+            "expected": 298.15
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_celsius_to_kelvin_below_absolute_zero",
+      "description": "TemperatureConverter.celsius_to_kelvin must raise ValueError with message 'Temperature {celsius}\u00b0C is below absolute zero' when celsius input would result in kelvin below 0",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "method": "celsius_to_kelvin",
+        "test_cases": [
+          {
+            "input": {
+              "celsius": -300
+            },
+            "expected_exception": "ValueError",
+            "expected_message": "Temperature -300\u00b0C is below absolute zero"
+          },
+          {
+            "input": {
+              "celsius": -274
+            },
+            "expected_exception": "ValueError",
+            "expected_message": "Temperature -274\u00b0C is below absolute zero"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_kelvin_to_celsius_correct",
+      "description": "TemperatureConverter.kelvin_to_celsius must return correct conversion using formula kelvin - 273.15 for valid non-negative kelvin values",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "method": "kelvin_to_celsius",
+        "test_cases": [
+          {
+            "input": {
+              "kelvin": 273.15
+            },
+            "expected": 0.0
+          },
+          {
+            "input": {
+              "kelvin": 373.15
+            },
+            "expected": 100.0
+          },
+          {
+            "input": {
+              "kelvin": 0
+            },
+            "expected": -273.15
+          },
+          {
+            "input": {
+              "kelvin": 298.15
+            },
+            "expected": 25.0
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_kelvin_to_celsius_negative_kelvin",
+      "description": "TemperatureConverter.kelvin_to_celsius must raise ValueError when kelvin input is negative",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "method": "kelvin_to_celsius",
+        "test_cases": [
+          {
+            "input": {
+              "kelvin": -10
+            },
+            "expected_exception": "ValueError"
+          },
+          {
+            "input": {
+              "kelvin": -1
+            },
+            "expected_exception": "ValueError"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_converter_roundtrip_preserves_values",
+      "description": "Temperature conversions between celsius/fahrenheit and celsius/kelvin should preserve values within floating point precision when converted back. Test each conversion pair independently.",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "test_cases": [
+          {
+            "input": {
+              "celsius": 0
+            },
+            "method_sequence": [
+              "celsius_to_fahrenheit",
+              "fahrenheit_to_celsius"
+            ],
+            "tolerance": 1e-10
+          },
+          {
+            "input": {
+              "celsius": 100
+            },
+            "method_sequence": [
+              "celsius_to_fahrenheit",
+              "fahrenheit_to_celsius"
+            ],
+            "tolerance": 1e-10
+          },
+          {
+            "input": {
+              "celsius": 0
+            },
+            "method_sequence": [
+              "celsius_to_kelvin",
+              "kelvin_to_celsius"
+            ],
+            "tolerance": 1e-10
+          },
+          {
+            "input": {
+              "celsius": 100
+            },
+            "method_sequence": [
+              "celsius_to_kelvin",
+              "kelvin_to_celsius"
+            ],
+            "tolerance": 1e-10
+          }
+        ]
+      },
+      "uncertainty": 0.1,
+      "status": "confirmed"
+    },
+    {
+      "id": "length_convert_valid_units_correct",
+      "description": "LengthConverter.convert must correctly convert between all supported units (meter, kilometer, centimeter, millimeter, mile, yard, foot, inch) using the METERS_PER_UNIT conversion factors",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "LengthConverter",
+        "method": "convert",
+        "test_cases": [
+          {
+            "input": {
+              "value": 1,
+              "from_unit": "meter",
+              "to_unit": "meter"
+            },
+            "expected": 1.0,
+            "tolerance": 1e-10
+          },
+          {
+            "input": {
+              "value": 1,
+              "from_unit": "kilometer",
+              "to_unit": "meter"
+            },
+            "expected": 1000.0,
+            "tolerance": 1e-10
+          },
+          {
+            "input": {
+              "value": 1,
+              "from_unit": "meter",
+              "to_unit": "centimeter"
+            },
+            "expected": 100.0,
+            "tolerance": 1e-10
+          },
+          {
+            "input": {
+              "value": 1,
+              "from_unit": "foot",
+              "to_unit": "inch"
+            },
+            "expected": 12.0,
+            "tolerance": 1e-10
+          },
+          {
+            "input": {
+              "value": 1,
+              "from_unit": "mile",
+              "to_unit": "kilometer"
+            },
+            "expected": 1.609344,
+            "tolerance": 1e-10
+          }
+        ]
+      },
+      "uncertainty": 0.1,
+      "status": "confirmed"
+    },
+    {
+      "id": "length_convert_unknown_units_raises_error",
+      "description": "LengthConverter.convert must raise ValueError with message 'Unknown unit: {unit_name}' when either from_unit or to_unit is not in the supported units list",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "LengthConverter",
+        "method": "convert",
+        "test_cases": [
+          {
+            "input": {
+              "value": 1,
+              "from_unit": "furlong",
+              "to_unit": "meter"
+            },
+            "expected_exception": "ValueError",
+            "expected_message": "Unknown unit: furlong"
+          },
+          {
+            "input": {
+              "value": 1,
+              "from_unit": "meter",
+              "to_unit": "parsec"
+            },
+            "expected_exception": "ValueError",
+            "expected_message": "Unknown unit: parsec"
+          },
+          {
+            "input": {
+              "value": 1,
+              "from_unit": "unknown",
+              "to_unit": "invalid"
+            },
+            "expected_exception": "ValueError",
+            "expected_message": "Unknown unit: unknown"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_memory_store_recall_correct",
+      "description": "Calculator.store must save a value to memory and Calculator.recall must return the stored value",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "store",
+        "test_cases": [
+          {
+            "input": {
+              "value": 42
+            },
+            "verify_method": "recall",
+            "expected": 42
+          },
+          {
+            "input": {
+              "value": -10.5
+            },
+            "verify_method": "recall",
+            "expected": -10.5
+          },
+          {
+            "input": {
+              "value": 0
+            },
+            "verify_method": "recall",
+            "expected": 0
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_memory_clear_resets_to_zero",
+      "description": "Calculator.clear_memory must reset memory to 0.0, verified by subsequent recall returning 0.0",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "clear_memory",
+        "test_cases": [
+          {
+            "setup": {
+              "store": 100
+            },
+            "verify_method": "recall",
+            "expected": 0.0
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calc_history_records_operations",
+      "description": "Calculator arithmetic operations (add, subtract, multiply, divide, power, modulo) must append formatted operation strings to history list accessible via get_history(). Each test case uses a fresh Calculator instance and verifies that the operation appears as the last entry in history.",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "test_cases": [
+          {
+            "operation": "add",
+            "input": {
+              "a": 2,
+              "b": 3
+            },
+            "expected_history_last_entry": "2 + 3 = 5"
+          },
+          {
+            "operation": "subtract",
+            "input": {
+              "a": 10,
+              "b": 3
+            },
+            "expected_history_last_entry": "10 - 3 = 7"
+          },
+          {
+            "operation": "multiply",
+            "input": {
+              "a": 4,
+              "b": 5
+            },
+            "expected_history_last_entry": "4 * 5 = 20"
+          },
+          {
+            "operation": "divide",
+            "input": {
+              "a": 10,
+              "b": 2
+            },
+            "expected_history_last_entry": "10 / 2 = 5.0"
+          },
+          {
+            "operation": "power",
+            "input": {
+              "base": 2,
+              "exponent": 3
+            },
+            "expected_history_last_entry": "2 ^ 3 = 8"
+          },
+          {
+            "operation": "modulo",
+            "input": {
+              "a": 10,
+              "b": 3
+            },
+            "expected_history_last_entry": "10 % 3 = 1"
+          }
+        ]
+      },
+      "uncertainty": 0.1,
+      "status": "confirmed"
+    }
+  ]
+}

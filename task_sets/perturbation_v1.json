@@ -1,0 +1,144 @@
+{
+  "name": "perturbation_v1",
+  "description": "Curated 15-task set for perturbation protocol experiments. 3 easy, 7 medium, 5 hard. Selected for repo diversity, clear difficulty gradient, and meaningful agent navigation requirements.",
+  "created": "2026-02-12",
+  "source": "SWE-bench Lite (princeton-nlp/SWE-bench_Lite, split=test)",
+  "total_tasks": 15,
+  "difficulty_distribution": {
+    "easy": 3,
+    "medium": 7,
+    "hard": 5
+  },
+  "tasks": {
+    "easy": [
+      {
+        "instance_id": "django__django-13447",
+        "repo": "django/django",
+        "patch_stats": { "files": 1, "hunks": 1, "lines_changed": 1 },
+        "rationale": "Add model class to app_list context. Single-line addition to admin view. Clear requirement, minimal codebase navigation."
+      },
+      {
+        "instance_id": "astropy__astropy-6938",
+        "repo": "astropy/astropy",
+        "patch_stats": { "files": 1, "hunks": 1, "lines_changed": 2 },
+        "rationale": "Fix D exponent separator replacement in FITS record parsing. Well-scoped string operation bug with existing test coverage hints."
+      },
+      {
+        "instance_id": "pytest-dev__pytest-11143",
+        "repo": "pytest-dev/pytest",
+        "patch_stats": { "files": 1, "hunks": 1, "lines_changed": 1 },
+        "rationale": "Assertion rewrite fails when first expression in file is a number mistaken as docstring. Single-line guard fix."
+      }
+    ],
+    "medium": [
+      {
+        "instance_id": "django__django-16379",
+        "repo": "django/django",
+        "patch_stats": { "files": 1, "hunks": 1, "lines_changed": 5 },
+        "rationale": "FileBasedCache has_key is susceptible to TOCTOU race condition. Requires understanding cache backend internals and exception handling patterns."
+      },
+      {
+        "instance_id": "django__django-14915",
+        "repo": "django/django",
+        "patch_stats": { "files": 1, "hunks": 1, "lines_changed": 3 },
+        "rationale": "ModelChoiceIteratorValue is not hashable after 3.0->3.1 migration. Requires understanding Django forms and widget option rendering."
+      },
+      {
+        "instance_id": "pytest-dev__pytest-5413",
+        "repo": "pytest-dev/pytest",
+        "patch_stats": { "files": 1, "hunks": 1, "lines_changed": 3 },
+        "rationale": "str() on pytest.raises context variable behaves differently from normal exception catch. Requires understanding pytest exception handling internals."
+      },
+      {
+        "instance_id": "psf__requests-863",
+        "repo": "psf/requests",
+        "patch_stats": { "files": 1, "hunks": 1, "lines_changed": 6 },
+        "rationale": "Allow lists in the dict values of the hooks argument. Requires understanding the hook registration mechanism in the requests library."
+      },
+      {
+        "instance_id": "matplotlib__matplotlib-23964",
+        "repo": "matplotlib/matplotlib",
+        "patch_stats": { "files": 1, "hunks": 1, "lines_changed": 5 },
+        "rationale": "Text label with empty line causes TypeError in PostScript backend. Requires navigating matplotlib's backend rendering pipeline."
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-8435",
+        "repo": "sphinx-doc/sphinx",
+        "patch_stats": { "files": 1, "hunks": 1, "lines_changed": 6 },
+        "rationale": "autodoc_type_aliases does not apply to variables and attributes. Requires understanding Sphinx's autodoc extension and type annotation processing."
+      },
+      {
+        "instance_id": "scikit-learn__scikit-learn-13439",
+        "repo": "scikit-learn/scikit-learn",
+        "patch_stats": { "files": 1, "hunks": 1, "lines_changed": 6 },
+        "rationale": "Pipeline should implement __len__. Requires understanding sklearn Pipeline's indexing and iteration interface."
+      }
+    ],
+    "hard": [
+      {
+        "instance_id": "scikit-learn__scikit-learn-10297",
+        "repo": "scikit-learn/scikit-learn",
+        "patch_stats": { "files": 1, "hunks": 3, "lines_changed": 34 },
+        "rationale": "RidgeClassifierCV's store_cv_values parameter issue. Multi-hunk fix requiring understanding of cross-validation internals and parameter propagation."
+      },
+      {
+        "instance_id": "django__django-11019",
+        "repo": "django/django",
+        "patch_stats": { "files": 1, "hunks": 3, "lines_changed": 76 },
+        "rationale": "Merging 3+ media objects throws unnecessary MediaOrderConflictWarnings. Largest patch in the set. Requires understanding Django's media merging algorithm and topological sort."
+      },
+      {
+        "instance_id": "sympy__sympy-18199",
+        "repo": "sympy/sympy",
+        "patch_stats": { "files": 1, "hunks": 3, "lines_changed": 50 },
+        "rationale": "nthroot_mod function misses root x=0 mod p. Requires number theory knowledge and understanding of SymPy's modular arithmetic implementation."
+      },
+      {
+        "instance_id": "pytest-dev__pytest-5103",
+        "repo": "pytest-dev/pytest",
+        "patch_stats": { "files": 1, "hunks": 3, "lines_changed": 25 },
+        "rationale": "Unroll iterable for all/any calls to get better assertion failure reports. Requires deep understanding of pytest's assertion rewriting AST machinery."
+      },
+      {
+        "instance_id": "matplotlib__matplotlib-24265",
+        "repo": "matplotlib/matplotlib",
+        "patch_stats": { "files": 1, "hunks": 3, "lines_changed": 69 },
+        "rationale": "Setting style.library['seaborn-colorblind'] causes key error on v3.6.1. Multi-hunk fix involving style registry, deprecation handling, and backwards compatibility."
+      }
+    ]
+  },
+  "task_ids": [
+    "django__django-13447",
+    "astropy__astropy-6938",
+    "pytest-dev__pytest-11143",
+    "django__django-16379",
+    "django__django-14915",
+    "pytest-dev__pytest-5413",
+    "psf__requests-863",
+    "matplotlib__matplotlib-23964",
+    "sphinx-doc__sphinx-8435",
+    "scikit-learn__scikit-learn-13439",
+    "scikit-learn__scikit-learn-10297",
+    "django__django-11019",
+    "sympy__sympy-18199",
+    "pytest-dev__pytest-5103",
+    "matplotlib__matplotlib-24265"
+  ],
+  "repos_used": [
+    "django/django",
+    "astropy/astropy",
+    "pytest-dev/pytest",
+    "psf/requests",
+    "matplotlib/matplotlib",
+    "sphinx-doc/sphinx",
+    "scikit-learn/scikit-learn",
+    "sympy/sympy"
+  ],
+  "usage": {
+    "cli_all": "uv run kekule-bench --task-ids django__django-13447 astropy__astropy-6938 pytest-dev__pytest-11143 django__django-16379 django__django-14915 pytest-dev__pytest-5413 psf__requests-863 matplotlib__matplotlib-23964 sphinx-doc__sphinx-8435 scikit-learn__scikit-learn-13439 scikit-learn__scikit-learn-10297 django__django-11019 sympy__sympy-18199 pytest-dev__pytest-5103 matplotlib__matplotlib-24265 --problems 15 --skip-eval",
+    "cli_easy_only": "uv run kekule-bench --task-ids django__django-13447 astropy__astropy-6938 pytest-dev__pytest-11143 --problems 3 --skip-eval",
+    "cli_medium_only": "uv run kekule-bench --task-ids django__django-16379 django__django-14915 pytest-dev__pytest-5413 psf__requests-863 matplotlib__matplotlib-23964 sphinx-doc__sphinx-8435 scikit-learn__scikit-learn-13439 --problems 7 --skip-eval",
+    "cli_hard_only": "uv run kekule-bench --task-ids scikit-learn__scikit-learn-10297 django__django-11019 sympy__sympy-18199 pytest-dev__pytest-5103 matplotlib__matplotlib-24265 --problems 5 --skip-eval",
+    "task_file": "uv run kekule-bench --task-file task_sets/perturbation_v1.json --skip-eval"
+  }
+}

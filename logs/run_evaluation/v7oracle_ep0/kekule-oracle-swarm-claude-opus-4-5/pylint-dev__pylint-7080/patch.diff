@@ -1,0 +1,87 @@
+diff --git a/pylint/lint/pylinter.py b/pylint/lint/pylinter.py
+index e2bbf06..43bd25c 100644
+--- a/pylint/lint/pylinter.py
++++ b/pylint/lint/pylinter.py
+@@ -608,12 +608,24 @@ class PyLinter(
+ 
+                     if "__init__.py" in files:
+                         skip_subtrees.append(root)
+-                        yield root
++                        if not _is_ignored_file(
++                            root,
++                            self.config.ignore,
++                            self.config.ignore_patterns,
++                            self.config.ignore_paths,
++                        ):
++                            yield root
+                     else:
+                         yield from (
+                             os.path.join(root, file)
+                             for file in files
+                             if file.endswith(".py")
++                            and not _is_ignored_file(
++                                os.path.join(root, file),
++                                self.config.ignore,
++                                self.config.ignore_patterns,
++                                self.config.ignore_paths,
++                            )
+                         )
+             else:
+                 yield something
+diff --git a/tests/lint/unittest_lint.py b/tests/lint/unittest_lint.py
+index 3dbde39..8ed0ba6 100644
+--- a/tests/lint/unittest_lint.py
++++ b/tests/lint/unittest_lint.py
+@@ -912,6 +912,52 @@ def test_recursive_ignore(ignore_parameter, ignore_parameter_value) -> None:
+     assert module in linted_file_paths
+ 
+ 
++def test_recursive_ignore_paths_on_packages() -> None:
++    """Test that ignore-paths also works correctly with packages (directories with __init__.py).
++
++    Regression test for issue #7080: --recursive=y ignores ignore-paths.
++    When a directory containing __init__.py (i.e., a package) matches the ignore-paths pattern,
++    it should not be linted.
++    """
++    run = Run(
++        [
++            "--recursive",
++            "y",
++            "--ignore-paths",
++            ".*ignored_package.*",
++            join(REGRTEST_DATA_DIR, "directory"),
++        ],
++        exit=False,
++    )
++
++    linted_files = run.linter._iterate_file_descrs(
++        tuple(run.linter._discover_files([join(REGRTEST_DATA_DIR, "directory")]))
++    )
++    linted_file_paths = [file_item.filepath for file_item in linted_files]
++
++    # This package should be ignored because it matches the ignore-paths pattern
++    ignored_package = os.path.abspath(
++        join(REGRTEST_DATA_DIR, "directory", "ignored_package")
++    )
++    ignored_package_file = os.path.abspath(
++        join(REGRTEST_DATA_DIR, "directory", "ignored_package", "failing.py")
++    )
++
++    # Neither the package root nor any files within should be in the linted paths
++    assert ignored_package not in linted_file_paths
++    assert ignored_package_file not in linted_file_paths
++
++    # But other modules should still be linted
++    for regrtest_data_module in (
++        ("directory", "subdirectory", "subsubdirectory", "module.py"),
++        ("directory", "subdirectory", "module.py"),
++        ("directory", "package", "module.py"),
++        ("directory", "package", "subpackage", "module.py"),
++    ):
++        module = os.path.abspath(join(REGRTEST_DATA_DIR, *regrtest_data_module))
++        assert module in linted_file_paths
++
++
+ def test_import_sibling_module_from_namespace(initialized_linter: PyLinter) -> None:
+     """If the parent directory above `namespace` is on sys.path, ensure that
+     modules under `namespace` can import each other without raising `import-error`."""

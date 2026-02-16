@@ -1,0 +1,30 @@
+diff --git a/pylint/checkers/imports.py b/pylint/checkers/imports.py
+index 97d9d51..e14ef51 100644
+--- a/pylint/checkers/imports.py
++++ b/pylint/checkers/imports.py
+@@ -919,7 +919,7 @@ class ImportsChecker(DeprecatedMixin, BaseChecker):
+                     graph[importee].add(importer)
+         return graph
+ 
+-    @astroid.decorators.cached
++    @functools.lru_cache(maxsize=None)
+     def _external_dependencies_info(self):
+         """Return cached external dependencies information or build and
+         cache them.
+diff --git a/pylint/lint/pylinter.py b/pylint/lint/pylinter.py
+index e2bbf06..29694b4 100644
+--- a/pylint/lint/pylinter.py
++++ b/pylint/lint/pylinter.py
+@@ -614,6 +614,12 @@ class PyLinter(
+                             os.path.join(root, file)
+                             for file in files
+                             if file.endswith(".py")
++                            and not _is_ignored_file(
++                                os.path.join(root, file),
++                                self.config.ignore,
++                                self.config.ignore_patterns,
++                                self.config.ignore_paths,
++                            )
+                         )
+             else:
+                 yield something

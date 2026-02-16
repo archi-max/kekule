@@ -1,0 +1,513 @@
+{
+  "rules": [
+    {
+      "id": "calculator_divide_zero_error",
+      "description": "Calculator.divide must raise ZeroDivisionError when divisor b equals zero",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "divide",
+        "test_cases": [
+          {
+            "input": {
+              "a": 10.0,
+              "b": 0.0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot divide by zero"
+          },
+          {
+            "input": {
+              "a": -5.0,
+              "b": 0.0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot divide by zero"
+          },
+          {
+            "input": {
+              "a": 0.0,
+              "b": 0.0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot divide by zero"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_converter_celsius_fahrenheit_roundtrip",
+      "description": "TemperatureConverter roundtrip Celsius -> Fahrenheit -> Celsius must match original within 1e-9 tolerance",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "method": "celsius_to_fahrenheit,fahrenheit_to_celsius",
+        "tolerance": 1e-09,
+        "test_cases": [
+          {
+            "input": {
+              "celsius": 0.0
+            },
+            "expected": 0.0,
+            "description": "water freezing point"
+          },
+          {
+            "input": {
+              "celsius": 100.0
+            },
+            "expected": 100.0,
+            "description": "water boiling point"
+          },
+          {
+            "input": {
+              "celsius": -40.0
+            },
+            "expected": -40.0,
+            "description": "celsius equals fahrenheit point"
+          },
+          {
+            "input": {
+              "celsius": 37.5
+            },
+            "expected": 37.5,
+            "description": "human body temperature"
+          },
+          {
+            "input": {
+              "celsius": -273.15
+            },
+            "expected": -273.15,
+            "description": "absolute zero"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "statistics_mean_correctness",
+      "description": "Statistics.mean must correctly calculate arithmetic mean by returning sum(data)/len(data)",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/stats.py",
+        "class": "Statistics",
+        "method": "mean",
+        "test_cases": [
+          {
+            "input": {
+              "data": [
+                1.0,
+                2.0,
+                3.0,
+                4.0,
+                5.0
+              ]
+            },
+            "expected": 3.0,
+            "description": "multiple positive values"
+          },
+          {
+            "input": {
+              "data": [
+                10.0
+              ]
+            },
+            "expected": 10.0,
+            "description": "single value"
+          },
+          {
+            "input": {
+              "data": [
+                -1.0,
+                1.0
+              ]
+            },
+            "expected": 0.0,
+            "description": "negative and positive values canceling"
+          },
+          {
+            "input": {
+              "data": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "expected": 0.0,
+            "description": "all zeros"
+          },
+          {
+            "input": {
+              "data": [
+                -5.0,
+                -10.0,
+                -15.0
+              ]
+            },
+            "expected": -10.0,
+            "description": "all negative values"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "statistics_mean_empty_error",
+      "description": "Statistics.mean must raise ValueError with message 'Cannot compute mean of empty dataset' when data list is empty",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/stats.py",
+        "class": "Statistics",
+        "method": "mean",
+        "test_cases": [
+          {
+            "input": {
+              "data": []
+            },
+            "expected_exception": "ValueError",
+            "expected_message": "Cannot compute mean of empty dataset"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calculator_add_correctness",
+      "description": "Calculator.add must correctly return a + b for positive, negative, and zero values",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "add",
+        "test_cases": [
+          {
+            "input": {
+              "a": 5.0,
+              "b": 3.0
+            },
+            "expected": 8.0,
+            "description": "two positive numbers"
+          },
+          {
+            "input": {
+              "a": -5.0,
+              "b": -3.0
+            },
+            "expected": -8.0,
+            "description": "two negative numbers"
+          },
+          {
+            "input": {
+              "a": 5.0,
+              "b": -3.0
+            },
+            "expected": 2.0,
+            "description": "positive and negative"
+          },
+          {
+            "input": {
+              "a": 0.0,
+              "b": 5.0
+            },
+            "expected": 5.0,
+            "description": "zero and positive"
+          },
+          {
+            "input": {
+              "a": 0.0,
+              "b": 0.0
+            },
+            "expected": 0.0,
+            "description": "both zeros"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calculator_subtract_correctness",
+      "description": "Calculator.subtract must correctly return a - b for positive, negative, and zero values",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "subtract",
+        "test_cases": [
+          {
+            "input": {
+              "a": 5.0,
+              "b": 3.0
+            },
+            "expected": 2.0,
+            "description": "positive minus positive"
+          },
+          {
+            "input": {
+              "a": -5.0,
+              "b": -3.0
+            },
+            "expected": -2.0,
+            "description": "negative minus negative"
+          },
+          {
+            "input": {
+              "a": 5.0,
+              "b": -3.0
+            },
+            "expected": 8.0,
+            "description": "positive minus negative"
+          },
+          {
+            "input": {
+              "a": 0.0,
+              "b": 5.0
+            },
+            "expected": -5.0,
+            "description": "zero minus positive"
+          },
+          {
+            "input": {
+              "a": 5.0,
+              "b": 0.0
+            },
+            "expected": 5.0,
+            "description": "positive minus zero"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calculator_multiply_correctness",
+      "description": "Calculator.multiply must correctly return a * b for positive, negative, and zero values",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "multiply",
+        "test_cases": [
+          {
+            "input": {
+              "a": 5.0,
+              "b": 3.0
+            },
+            "expected": 15.0,
+            "description": "two positive numbers"
+          },
+          {
+            "input": {
+              "a": -5.0,
+              "b": -3.0
+            },
+            "expected": 15.0,
+            "description": "two negative numbers"
+          },
+          {
+            "input": {
+              "a": -5.0,
+              "b": 3.0
+            },
+            "expected": -15.0,
+            "description": "negative and positive"
+          },
+          {
+            "input": {
+              "a": 0.0,
+              "b": 5.0
+            },
+            "expected": 0.0,
+            "description": "zero and positive"
+          },
+          {
+            "input": {
+              "a": 5.0,
+              "b": 0.0
+            },
+            "expected": 0.0,
+            "description": "positive and zero"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calculator_divide_correctness",
+      "description": "Calculator.divide must correctly return a / b for valid inputs where b is not zero",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "divide",
+        "test_cases": [
+          {
+            "input": {
+              "a": 10.0,
+              "b": 2.0
+            },
+            "expected": 5.0,
+            "description": "positive divided by positive"
+          },
+          {
+            "input": {
+              "a": -10.0,
+              "b": 2.0
+            },
+            "expected": -5.0,
+            "description": "negative divided by positive"
+          },
+          {
+            "input": {
+              "a": 10.0,
+              "b": -2.0
+            },
+            "expected": -5.0,
+            "description": "positive divided by negative"
+          },
+          {
+            "input": {
+              "a": -10.0,
+              "b": -2.0
+            },
+            "expected": 5.0,
+            "description": "negative divided by negative"
+          },
+          {
+            "input": {
+              "a": 0.0,
+              "b": 5.0
+            },
+            "expected": 0.0,
+            "description": "zero divided by positive"
+          }
+        ]
+      },
+      "uncertainty": 0.0,
+      "status": "confirmed"
+    },
+    {
+      "id": "calculator_modulo_zero_error",
+      "description": "Calculator.modulo must raise ZeroDivisionError with message 'Cannot modulo by zero' when divisor b equals zero",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/core.py",
+        "class": "Calculator",
+        "method": "modulo",
+        "test_cases": [
+          {
+            "input": {
+              "a": 10.0,
+              "b": 0.0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot modulo by zero"
+          },
+          {
+            "input": {
+              "a": -5.0,
+              "b": 0.0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot modulo by zero"
+          },
+          {
+            "input": {
+              "a": 0.0,
+              "b": 0.0
+            },
+            "expected_exception": "ZeroDivisionError",
+            "expected_message": "Cannot modulo by zero"
+          }
+        ]
+      },
+      "uncertainty": 0.1,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_converter_celsius_kelvin_absolute_zero",
+      "description": "TemperatureConverter.celsius_to_kelvin must raise ValueError when celsius value would result in kelvin < 0 (below absolute zero)",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "method": "celsius_to_kelvin",
+        "test_cases": [
+          {
+            "input": {
+              "celsius": -300.0
+            },
+            "expected_exception": "ValueError",
+            "expected_message_contains": "below absolute zero"
+          },
+          {
+            "input": {
+              "celsius": -500.0
+            },
+            "expected_exception": "ValueError",
+            "expected_message_contains": "below absolute zero"
+          }
+        ]
+      },
+      "uncertainty": 0.1,
+      "status": "confirmed"
+    },
+    {
+      "id": "temp_converter_celsius_kelvin_roundtrip",
+      "description": "TemperatureConverter roundtrip Celsius -> Kelvin -> Celsius must match original within 1e-9 tolerance for valid temperatures",
+      "oracle_type": "pytest",
+      "oracle_config": {
+        "target_module": "src/calculator/converter.py",
+        "class": "TemperatureConverter",
+        "method": "celsius_to_kelvin,kelvin_to_celsius",
+        "tolerance": 1e-09,
+        "test_cases": [
+          {
+            "input": {
+              "celsius": 0.0
+            },
+            "expected": 0.0,
+            "description": "water freezing point"
+          },
+          {
+            "input": {
+              "celsius": 100.0
+            },
+            "expected": 100.0,
+            "description": "water boiling point"
+          },
+          {
+            "input": {
+              "celsius": -273.15
+            },
+            "expected": -273.15,
+            "description": "absolute zero"
+          },
+          {
+            "input": {
+              "celsius": 25.0
+            },
+            "expected": 25.0,
+            "description": "room temperature"
+          },
+          {
+            "input": {
+              "celsius": -40.0
+            },
+            "expected": -40.0,
+            "description": "cold temperature"
+          }
+        ]
+      },
+      "uncertainty": 0.1,
+      "status": "confirmed"
+    }
+  ]
+}
