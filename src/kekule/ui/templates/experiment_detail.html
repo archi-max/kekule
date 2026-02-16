@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}{{ exp.name }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="/experiments">Experiments</a>
+    <span class="sep">/</span>
+    {{ exp.name }}
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+    <div>
+        <h1 style="margin-bottom: 4px;">{{ exp.name }}</h1>
+        <div class="meta">
+            <span>{{ exp.num_epochs }} epoch{{ 's' if exp.num_epochs != 1 else '' }}</span>
+            <span>${{ '%.2f'|format(exp.total_cost) }} total</span>
+        </div>
+    </div>
+    <div style="text-align: right;">
+        <div style="font-size: 32px; font-weight: 600;">
+            <span style="color: var(--green);">{{ '%.0f'|format(exp.latest_train_score * 100) }}%</span>
+            <span style="color: var(--text-muted); font-size: 16px; margin: 0 6px;">/</span>
+            <span style="color: var(--blue);">{{ '%.0f'|format(exp.latest_test_score * 100) }}%</span>
+        </div>
+        <div class="meta">latest train / test</div>
+    </div>
+</div>
+
+<!-- Task Split -->
+<div class="card">
+    <h3>Task Split</h3>
+    <div style="display: flex; gap: 24px; margin-top: 8px;">
+        <div>
+            <div class="meta">Train ({{ exp.train_ids|length }})</div>
+            {% for tid in exp.train_ids %}
+            <div style="font-size: 13px; font-family: monospace; padding: 2px 0;">{{ tid }}</div>
+            {% endfor %}
+        </div>
+        <div>
+            <div class="meta">Test ({{ exp.test_ids|length }})</div>
+            {% for tid in exp.test_ids %}
+            <div style="font-size: 13px; font-family: monospace; padding: 2px 0;">{{ tid }}</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Score Progression Chart -->
+<div class="card">
+    <h3>
+        Score Progression
+        <span id="poll-status" class="meta" style="font-weight: normal; margin-left: 8px; font-size: 11px;">live</span>
+    </h3>
+    <table style="margin-top: 8px;">
+        <thead>
+            <tr>
+                <th>Epoch</th>
+                <th>Train</th>
+                <th>Test</th>
+                <th>Cost</th>
+                <th>Duration</th>
+                <th style="width: 40%;">Progress</th>
+            </tr>
+        </thead>
+        <tbody id="scores-body">
+            {% for s in exp.scores %}
+            <tr>
+                <td>{{ s.epoch }}</td>
+                <td>
+                    <span class="badge badge-pass">{{ s.train_passed }}/{{ s.train_total }}</span>
+                    {{ '%.0f'|format(s.train_score * 100) }}%
+                </td>
+                <td>
+                    <span class="badge badge-{% if s.test_score > 0 %}pass{% else %}fail{% endif %}">{{ s.test_passed }}/{{ s.test_total }}</span>
+                    {{ '%.0f'|format(s.test_score * 100) }}%
+                </td>
+                <td class="meta">${{ '%.2f'|format(s.total_cost_usd) }}</td>
+                <td class="meta">{{ (s.duration_s / 60)|int }}m {{ (s.duration_s % 60)|int }}s</td>
+                <td>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <div style="flex: 1;">
+                            <div style="height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; width: {{ (s.train_score * 100)|int }}%; background: var(--green); border-radius: 3px;"></div>
+                            </div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; width: {{ (s.test_score * 100)|int }}%; background: var(--blue); border-radius: 3px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="meta" style="display: flex; justify-content: space-between; font-size: 10px;">
+                        <span style="color: var(--green);">train</span>
+                        <span style="color: var(--blue);">test</span>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Epoch Details -->
+{% for epoch_data in epochs %}
+<div class="card">
+    <h3 class="expandable-toggle" onclick="toggleExpand(this)">
+        Epoch {{ epoch_data.epoch }}
+        {% if epoch_data.results %}
+            {% set ep_passed = epoch_data.results|selectattr('resolved')|list|length %}
+            <span style="margin-left: 8px; font-size: 14px;">
+                <span style="color: var(--green);">{{ ep_passed }}</span><span class="meta">/{{ epoch_data.results|length }}</span>
+            </span>
+        {% endif %}
+    </h3>
+    <div class="expandable-content">
+
+        <!-- ============================================================ -->
+        <!-- PRE-RUN: What the epoch started with                         -->
+        <!-- ============================================================ -->
+        <div style="border-left: 3px solid var(--blue); padding-left: 16px; margin-top: 12px;">
+            <h3 style="color: var(--blue); margin-bottom: 8px;">Pre-Run Configuration</h3>
+
+            <!-- Accumulated lessons going INTO this epoch -->
+            {% if epoch_data.config and epoch_data.config.get('lessons_text') %}
+            <div style="margin-bottom: 12px;">
+                <div class="expandable-toggle open" onclick="toggleExpand(this)" style="font-size: 13px; font-weight: 600;">
+                    Lessons (input) <span class="meta" style="font-weight: normal;">accumulated from prior epochs</span>
+                </div>
+                <div class="expandable-content open">
+                    <div class="summary-box" style="white-space: pre-wrap; font-size: 13px; line-height: 1.6;">{{ epoch_data.config.lessons_text }}</div>
+                </div>
+            </div>
+            {% else %}
+            <div class="meta" style="margin-bottom: 12px;">No accumulated lessons {% if epoch_data.epoch == 0 %}(first epoch){% else %}(prior coordinator produced none){% endif %}</div>
+            {% endif %}
+
+            <!-- Composition config -->
+            {% if epoch_data.config and epoch_data.config.get('composition') %}
+            <div style="margin-bottom: 12px;">
+                {% set comp = epoch_data.config.composition %}
+                <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">Swarm Composition</div>
+                <div class="meta">
+                    <span>Coding agents: <strong style="color: var(--text);">{{ comp.get('num_coding_agents', '?') }}</strong></span>
+                    <span>Oracle rounds: <strong style="color: var(--text);">{{ comp.get('num_oracle_rounds', '?') }}</strong></span>
+                    <span>Oracle mode: <strong style="color: var(--text);">{{ comp.get('oracle_parallelism', '?') }}</strong></span>
+                </div>
+                {% if comp.get('planner_guidance') %}
+                <div style="margin-top: 4px;">
+                    <span class="meta">Planner guidance:</span>
+                    <div class="summary-box" style="margin-top: 4px; font-size: 12px;">{{ comp.planner_guidance }}</div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Oracle strategies going INTO this epoch -->
+            {% if epoch_data.config and epoch_data.config.get('oracle_strategies') %}
+            <div style="margin-bottom: 12px;">
+                <div class="expandable-toggle" onclick="toggleExpand(this)" style="font-size: 13px; font-weight: 600;">
+                    Oracle Strategies ({{ epoch_data.config.oracle_strategies|length }})
+                </div>
+                <div class="expandable-content">
+                    {% for oracle in epoch_data.config.oracle_strategies %}
+                    <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-top: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 600; font-size: 13px; color: var(--yellow);">{{ oracle.name }}</span>
+                            <span class="meta">
+                                {{ oracle.execution_mode }}
+                                {% if not oracle.enabled %} (disabled){% endif %}
+                                {% if oracle.weight != 1.0 %} w={{ oracle.weight }}{% endif %}
+                            </span>
+                        </div>
+                        <div class="meta" style="margin-top: 2px;">{{ oracle.description }}</div>
+                        {% if oracle.prompt_addendum %}
+                        <div style="margin-top: 6px; padding: 6px 10px; background: var(--bg-card); border-radius: 4px; font-size: 12px; color: var(--green);">
+                            + {{ oracle.prompt_addendum }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Prompts used this epoch -->
+            {% if epoch_data.prompts %}
+            <div>
+                <div class="expandable-toggle" onclick="toggleExpand(this)" style="font-size: 13px; font-weight: 600;">
+                    Prompts ({{ epoch_data.prompts|length }})
+                </div>
+                <div class="expandable-content">
+                    {% for pname, ptext in epoch_data.prompts.items() %}
+                    <div style="margin-bottom: 8px;">
+                        <div class="expandable-toggle" onclick="toggleExpand(this)" style="font-size: 13px; color: var(--blue);">
+                            {{ pname }} <span class="meta">({{ ptext|length }} chars)</span>
+                        </div>
+                        <div class="expandable-content">
+                            <pre class="summary-box" style="font-size: 12px; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">{{ ptext }}</pre>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- RUN RESULTS: What happened during the epoch                  -->
+        <!-- ============================================================ -->
+        {% if epoch_data.results %}
+        <div style="border-left: 3px solid var(--text-muted); padding-left: 16px; margin-top: 20px;">
+            <h3 style="color: var(--text); margin-bottom: 8px;">Run Results</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30px;"></th>
+                        <th>Instance</th>
+                        <th>Status</th>
+                        <th>Split</th>
+                        <th>Patch</th>
+                        <th>Turns</th>
+                        <th>Cost</th>
+                        <th>Time</th>
+                        <th>Roles</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in epoch_data.results %}
+                    {% set row_id = 'ep' ~ epoch_data.epoch ~ '-task-' ~ loop.index %}
+                    {% set swarm = r.get('swarm', {}) %}
+                    {% set has_swarm = swarm.get('broadcast') or swarm.get('agents') %}
+                    {% set has_diagnosis = r.get('failure_diagnosis') %}
+                    {% set expandable = has_swarm or has_diagnosis %}
+                    <tr>
+                        <td>
+                            {% if expandable %}
+                            <span class="expandable-toggle" onclick="toggleRow('{{ row_id }}', this)"></span>
+                            {% endif %}
+                        </td>
+                        <td style="font-family: monospace; font-size: 13px;">{{ r.instance_id }}</td>
+                        <td>
+                            {% if r.get('resolved', false) %}
+                            <span class="badge badge-pass">PASS</span>
+                            {% elif r.get('error') %}
+                            <span class="badge badge-fail">ERROR</span>
+                            {% else %}
+                            <span class="badge badge-fail">FAIL</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if r.instance_id in exp.train_ids %}
+                            <span style="color: var(--green); font-size: 12px;">train</span>
+                            {% elif r.instance_id in exp.test_ids %}
+                            <span style="color: var(--blue); font-size: 12px;">test</span>
+                            {% else %}
+                            <span class="meta">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="meta">{{ 'yes' if r.get('model_patch') else 'no' }}</td>
+                        <td class="meta">{{ r.get('num_turns', '—') }}</td>
+                        <td class="meta">${{ '%.2f'|format(r.get('cost_usd', 0)) }}</td>
+                        <td class="meta">
+                            {% if r.get('duration_s') %}
+                                {{ (r.duration_s / 60)|int }}m {{ (r.duration_s % 60)|int }}s
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td class="meta">{{ (r.get('roles', [])|join(', '))[:60] }}</td>
+                    </tr>
+                    {% if expandable %}
+                    <tr id="{{ row_id }}" style="display: none;">
+                        <td colspan="9" style="background: var(--bg); padding: 16px 24px;">
+
+                            <!-- Failure diagnosis -->
+                            {% if has_diagnosis %}
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--red);">Failure Diagnosis</div>
+                                <div style="font-size: 13px; margin-bottom: 4px;"><strong>Root cause:</strong> {{ r.failure_diagnosis.root_cause }}</div>
+                                {% if r.failure_diagnosis.get('what_swarm_missed') %}
+                                <div style="font-size: 13px; margin-bottom: 4px;"><strong>What swarm missed:</strong>
+                                    <ul style="margin: 2px 0 0 16px; font-size: 12px;">
+                                    {% for m in r.failure_diagnosis.what_swarm_missed %}
+                                        <li>{{ m }}</li>
+                                    {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                {% if r.failure_diagnosis.get('suggestion') %}
+                                <div style="font-size: 13px;"><strong>Suggestion:</strong> {{ r.failure_diagnosis.suggestion }}</div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            <!-- Agent roles -->
+                            {% if swarm.get('roles') %}
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Agents</div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                    {% for entry in swarm.roles %}
+                                    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px; font-size: 12px;">
+                                        <span style="color: var(--blue); font-weight: 600;">{{ entry.agent }}</span>
+                                        <span style="color: var(--text-muted); margin-left: 4px;">{{ entry.role }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Agent findings -->
+                            {% set findings_with_content = swarm.get('agents', [])|selectattr('findings')|list %}
+                            {% if findings_with_content %}
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Agent Findings</div>
+                                {% for af in findings_with_content %}
+                                <div style="margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                        <span style="color: var(--blue); font-weight: 600; font-size: 12px;">{{ af.agent }}</span>
+                                        {% if af.role %}
+                                        <span style="font-size: 11px; color: var(--text-muted);">{{ af.role }}</span>
+                                        {% endif %}
+                                        {% if af.status %}
+                                        <span style="font-size: 11px; color: var(--yellow);">{{ af.status }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <details>
+                                        <summary class="btn" style="font-size: 11px; padding: 2px 8px; cursor: pointer; list-style: none;">Show findings</summary>
+                                        <div class="summary-box" style="margin-top: 4px; white-space: pre-wrap; font-size: 12px; max-height: 300px; overflow-y: auto;">{{ af.findings }}</div>
+                                    </details>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            <!-- Broadcast log -->
+                            {% if swarm.get('broadcast') %}
+                            <div>
+                                <details>
+                                    <summary class="btn" style="font-size: 12px; cursor: pointer; list-style: none;">Show Swarm Chat</summary>
+                                    <div class="chat-log" style="margin-top: 8px;">
+                                        {% for line in swarm.broadcast.splitlines() %}
+                                            {% if line.strip() %}
+                                                {% if line.strip().startswith('[status]') %}
+                                                <div style="background: #1a2332; border-left: 3px solid var(--blue); padding: 4px 10px; margin-bottom: 3px; font-size: 12px;">
+                                                    <span style="color: var(--blue); font-weight: 600; font-size: 10px;">STATUS</span>
+                                                    <span style="margin-left: 4px;">{{ line.strip()[8:] }}</span>
+                                                </div>
+                                                {% elif line.strip().startswith('[coordination]') %}
+                                                <div style="background: #1e2a1e; border-left: 3px solid var(--green); padding: 4px 10px; margin-bottom: 3px; font-size: 12px;">
+                                                    <span style="color: var(--green); font-weight: 600; font-size: 10px;">COORD</span>
+                                                    <span style="margin-left: 4px;">{{ line.strip()[14:] }}</span>
+                                                </div>
+                                                {% elif line.strip().startswith('[file_activity]') %}
+                                                <div style="background: #1a1e2a; border-left: 3px solid var(--purple); padding: 4px 10px; margin-bottom: 3px; font-size: 12px;">
+                                                    <span style="color: var(--purple); font-weight: 600; font-size: 10px;">FILE</span>
+                                                    <span style="margin-left: 4px; font-family: monospace; font-size: 11px;">{{ line.strip()[15:] }}</span>
+                                                </div>
+                                                {% elif line.strip().startswith('[finding]') or line.strip().startswith('[broadcast]') %}
+                                                <div style="background: #2a2518; border-left: 3px solid var(--yellow); padding: 4px 10px; margin-bottom: 3px; font-size: 12px;">
+                                                    <span style="color: var(--yellow); font-weight: 600; font-size: 10px;">FINDING</span>
+                                                    <span style="margin-left: 4px;">{{ line.strip().split('] ', 1)[-1] }}</span>
+                                                </div>
+                                                {% else %}
+                                                <div style="background: var(--bg-card); border-left: 3px solid var(--border); padding: 4px 10px; margin-bottom: 3px; font-size: 12px;">
+                                                    {{ line.strip() }}
+                                                </div>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </details>
+                            </div>
+                            {% endif %}
+
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- ============================================================ -->
+        <!-- POST-RUN: Coordinator analysis after the epoch               -->
+        <!-- ============================================================ -->
+        {% if epoch_data.coordinator %}
+        <div style="border-left: 3px solid var(--yellow); padding-left: 16px; margin-top: 20px;">
+            <h3 style="color: var(--yellow); margin-bottom: 8px;">Post-Run Analysis <span class="meta" style="font-weight: normal;">coordinator output</span></h3>
+
+            {% if epoch_data.coordinator.get('analysis') %}
+            <div style="margin-bottom: 12px;">
+                <div class="expandable-toggle" onclick="toggleExpand(this)" style="font-size: 13px; font-weight: 600;">
+                    Failure Pattern Analysis
+                </div>
+                <div class="expandable-content">
+                    <div class="summary-box" style="white-space: pre-wrap; font-size: 13px; line-height: 1.6;">{{ epoch_data.coordinator.analysis }}</div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if epoch_data.coordinator.get('lessons_text') %}
+            <div style="margin-bottom: 12px;">
+                <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">New Lessons Learned</div>
+                <div class="summary-box" style="white-space: pre-wrap; font-size: 13px; line-height: 1.6;">{{ epoch_data.coordinator.lessons_text }}</div>
+            </div>
+            {% endif %}
+
+            {% if epoch_data.coordinator.get('oracle_adjustments') %}
+            <div style="margin-bottom: 12px;">
+                <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">Oracle Adjustments <span class="meta" style="font-weight: normal;">changes for next epoch</span></div>
+                <pre class="summary-box" style="font-size: 12px;">{{ epoch_data.coordinator.oracle_adjustments | tojson(indent=2) }}</pre>
+            </div>
+            {% endif %}
+
+            {% if epoch_data.coordinator.get('composition') %}
+            <div style="margin-bottom: 12px;">
+                <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">Composition Changes <span class="meta" style="font-weight: normal;">for next epoch</span></div>
+                <pre class="summary-box" style="font-size: 12px;">{{ epoch_data.coordinator.composition | tojson(indent=2) }}</pre>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endfor %}
+
+<!-- Accumulated Lessons -->
+{% if lessons %}
+<div class="card">
+    <h3>Accumulated Lessons</h3>
+    <div class="summary-box" style="margin-top: 8px; white-space: pre-wrap;">{{ lessons }}</div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleExpand(el) {
+    el.classList.toggle('open');
+    const content = el.nextElementSibling;
+    if (content && content.classList.contains('expandable-content')) {
+        content.classList.toggle('open');
+    }
+}
+
+function toggleRow(id, toggle) {
+    const row = document.getElementById(id);
+    if (row.style.display === 'none') {
+        row.style.display = 'table-row';
+        toggle.classList.add('open');
+    } else {
+        row.style.display = 'none';
+        toggle.classList.remove('open');
+    }
+}
+
+// Poll for score updates every 10 seconds
+(function() {
+    const expName = '{{ exp.name }}';
+    const tbody = document.getElementById('scores-body');
+    const status = document.getElementById('poll-status');
+    let lastCount = {{ exp.scores|length }};
+
+    function renderRow(s) {
+        const mins = Math.floor(s.duration_s / 60);
+        const secs = Math.floor(s.duration_s % 60);
+        const trainPct = Math.round(s.train_score * 100);
+        const testPct = Math.round(s.test_score * 100);
+        const testBadge = s.test_score > 0 ? 'badge-pass' : 'badge-fail';
+        return `<tr>
+            <td>${s.epoch}</td>
+            <td>
+                <span class="badge badge-pass">${s.train_passed}/${s.train_total}</span>
+                ${trainPct}%
+            </td>
+            <td>
+                <span class="badge ${testBadge}">${s.test_passed}/${s.test_total}</span>
+                ${testPct}%
+            </td>
+            <td class="meta">$${s.total_cost_usd.toFixed(2)}</td>
+            <td class="meta">${mins}m ${secs}s</td>
+            <td>
+                <div style="display:flex;gap:4px;align-items:center;">
+                    <div style="flex:1"><div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+                        <div style="height:100%;width:${trainPct}%;background:var(--green);border-radius:3px;"></div>
+                    </div></div>
+                    <div style="flex:1"><div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+                        <div style="height:100%;width:${testPct}%;background:var(--blue);border-radius:3px;"></div>
+                    </div></div>
+                </div>
+                <div class="meta" style="display:flex;justify-content:space-between;font-size:10px;">
+                    <span style="color:var(--green)">train</span>
+                    <span style="color:var(--blue)">test</span>
+                </div>
+            </td>
+        </tr>`;
+    }
+
+    function poll() {
+        fetch('/api/experiments/' + expName + '/scores')
+            .then(r => r.json())
+            .then(data => {
+                const scores = data.scores || [];
+                if (scores.length !== lastCount) {
+                    tbody.innerHTML = scores.map(renderRow).join('');
+                    lastCount = scores.length;
+                    status.textContent = 'updated';
+                    setTimeout(() => { status.textContent = 'live'; }, 2000);
+                } else {
+                    // Check if any values changed (e.g. score updated for existing epoch)
+                    const newHtml = scores.map(renderRow).join('');
+                    if (newHtml !== tbody.innerHTML) {
+                        tbody.innerHTML = newHtml;
+                        status.textContent = 'updated';
+                        setTimeout(() => { status.textContent = 'live'; }, 2000);
+                    }
+                }
+            })
+            .catch(() => {
+                status.textContent = 'offline';
+            });
+    }
+
+    setInterval(poll, 10000);
+})();
+</script>
+{% endblock %}

@@ -146,10 +146,25 @@ After implementing or reviewing a fix, you MUST run the project's actual test su
 
 If you are a reproducer/analyst (not the fixer), run the existing tests BEFORE any fix is applied to confirm which tests fail, then broadcast the failing test names so the fixer knows what to target.
 
+## Edge-Case Testing — MANDATORY
+Your fix will be evaluated against HIDDEN tests you cannot see. To maximize the chance of
+passing them, you MUST write and run your own edge-case tests BEFORE finalizing:
+
+1. **Re-read the problem statement word by word.** Extract EVERY concrete behavior it describes.
+   Pay attention to phrases like "should also", "in addition", "when X is None/empty/missing".
+2. **Write a small test script** (`/tmp/test_edge_cases.py`) that covers:
+   - The exact scenario from the problem statement
+   - The boundary/None/empty/default case (e.g., what if the argument is missing?)
+   - The interaction case (e.g., does the fix still work when combined with related features?)
+3. **Run your edge-case tests** and fix until they all pass.
+4. **Broadcast your edge-case findings** so other agents can verify.
+
 ## Fix Self-Review — MANDATORY
 After implementing your fix AND running tests, do a critical self-review before stopping:
 
-1. **Re-read the problem statement**. Does your fix address the ROOT CAUSE or just the symptom?
+1. **Re-read the problem statement LINE BY LINE**. Does your fix address EVERY behavior described?
+   Many issues describe multiple requirements — fixing one while missing another is a common failure.
+   Ask: "If someone wrote a test for each sentence in this issue, would my fix pass all of them?"
 2. **Consider deletion**. Could the bug be caused by code that SHOULDN'T EXIST? Sometimes
    the correct fix is to remove a method, condition, or override — not to add or change code.
    Ask: "What happens if this code simply wasn't here? Does the parent class, fallback path,

@@ -53,11 +53,26 @@ class SWETask:
 
 
 def load_swebench_lite() -> list[dict]:
-    """Load the full SWE-bench Lite dataset."""
+    """Load the SWE-bench Lite dataset."""
     logger.info("Loading SWE-bench Lite dataset from HuggingFace...")
     ds = load_dataset("princeton-nlp/SWE-bench_Lite", split="test")
     logger.info(f"Loaded {len(ds)} instances")
     return list(ds)
+
+
+def load_swebench_full() -> list[dict]:
+    """Load the full SWE-bench dataset."""
+    logger.info("Loading SWE-bench Full dataset from HuggingFace...")
+    ds = load_dataset("princeton-nlp/SWE-bench", split="test")
+    logger.info(f"Loaded {len(ds)} instances")
+    return list(ds)
+
+
+def load_swebench(dataset: str = "lite") -> list[dict]:
+    """Load a SWE-bench dataset by name ('lite' or 'full')."""
+    if dataset == "full":
+        return load_swebench_full()
+    return load_swebench_lite()
 
 
 SMALL_REPOS = [
@@ -93,6 +108,7 @@ def select_tasks(
     num_problems: int = 3,
     repos: list[str] | None = None,
     task_file: str | Path | None = None,
+    dataset: str = "lite",
 ) -> list[SWETask]:
     """
     Select SWE-bench tasks for the experiment.
@@ -102,6 +118,7 @@ def select_tasks(
         num_problems: Number of problems to select (only used for auto-selection).
         repos: If provided, select all tasks from these repos (up to num_problems).
         task_file: Path to a JSON file containing a 'task_ids' array. Overrides task_ids.
+        dataset: Which SWE-bench dataset to load ('lite' or 'full').
 
     Returns:
         List of SWETask objects.
@@ -109,7 +126,7 @@ def select_tasks(
     if task_file:
         task_ids = load_task_file(task_file)
 
-    all_instances = load_swebench_lite()
+    all_instances = load_swebench(dataset)
     id_to_instance = {inst["instance_id"]: inst for inst in all_instances}
 
     if repos:
@@ -127,7 +144,7 @@ def select_tasks(
     tasks = []
     for task_id in ids_to_use:
         if task_id not in id_to_instance:
-            logger.warning(f"Task {task_id} not found in SWE-bench Lite, skipping")
+            logger.warning(f"Task {task_id} not found in SWE-bench ({dataset}), skipping")
             continue
 
         inst = id_to_instance[task_id]

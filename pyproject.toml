@@ -37,6 +37,7 @@ all = [
 [project.scripts]
 kekule-bench = "kekule.benchmarks.harness:main"
 kekule-oracle = "kekule.oracle.__main__:main"
+kekule-improve = "kekule.benchmarks.self_improving_harness:main"
 
 [build-system]
 requires = ["uv_build>=0.8.22,<0.9.0"]

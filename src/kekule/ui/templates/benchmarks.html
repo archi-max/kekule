@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Benchmarks{% endblock %}
+
+{% block content %}
+<h1>SWE-bench Benchmark Runs</h1>
+<p class="meta" style="margin-bottom: 20px;">{{ runs|length }} evaluation runs discovered</p>
+
+{% for run in runs %}
+<a href="/benchmarks/{{ run.run_id }}" style="text-decoration: none; color: inherit;">
+<div class="card" style="max-width: 700px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <h3 style="margin-bottom: 4px;">{{ run.run_id }}</h3>
+            <div class="meta">
+                <span>{{ run.model }}</span>
+                {% if run.swarm_design %}<span>Design: {{ run.swarm_design }}</span>{% endif %}
+                {% if run.perturbation_intensity is not none and run.perturbation_intensity > 0 %}
+                    <span>Perturbation: {{ "%.2f"|format(run.perturbation_intensity) }}</span>
+                {% endif %}
+                {% if run.cost_usd %}<span>${{ "%.2f"|format(run.cost_usd) }}</span>{% endif %}
+                {% if run.duration_s %}<span>{{ "%.0f"|format(run.duration_s) }}s</span>{% endif %}
+            </div>
+            {% if run.roles %}
+            <div class="meta" style="margin-top: 4px;">
+                Roles: {{ run.roles|join(', ') }}
+            </div>
+            {% endif %}
+        </div>
+        <div style="text-align: right; min-width: 120px;">
+            <span style="font-size: 24px; font-weight: 600;">
+                <span class="status-resolved">{{ run.passed }}</span><span class="meta">/{{ run.total }}</span>
+            </span>
+            <div style="font-size: 13px; color: var(--text-muted);">
+                {{ "%.0f"|format(run.pass_rate) }}% pass rate
+            </div>
+        </div>
+    </div>
+    <div class="progress-bar" style="margin-top: 12px;">
+        <div class="progress-bar-fill" style="width: {{ run.pass_rate }}%"></div>
+    </div>
+    <div style="display: flex; gap: 6px; margin-top: 8px;">
+        {% for task in run.tasks %}
+        <div style="width: 24px; height: 24px; border-radius: 4px; background: {% if task.resolved %}var(--green-bg){% else %}var(--red-bg){% endif %}; border: 1px solid {% if task.resolved %}var(--green){% else %}var(--red){% endif %}; display: flex; align-items: center; justify-content: center; font-size: 12px;" title="{{ task.instance_id }}">
+            {% if task.resolved %}&#10003;{% else %}&#10007;{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+</a>
+{% endfor %}
+
+{% if not runs %}
+<div class="card">
+    <p class="meta">No benchmark runs found. Run an evaluation to see results here.</p>
+    <p class="meta" style="margin-top: 8px;">Results are discovered from <code>logs/run_evaluation/</code></p>
+</div>
+{% endif %}
+{% endblock %}

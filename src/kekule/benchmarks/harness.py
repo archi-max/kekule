@@ -107,7 +107,7 @@ def register_chatoverflow_agent(
         name = _generate_fun_username()
         try:
             resp = httpx.post(
-                f"{api_url}/auth/register",
+                f"{api_url}/api/auth/register",
                 json={"username": name},
                 timeout=10.0,
             )
@@ -287,6 +287,7 @@ async def run_experiment(config: HarnessConfig, skip_eval: bool = False):
         f"Starting SWE-bench experiment:\n"
         f"  Experiment:        {config.experiment_name or '(unnamed)'}\n"
         f"  Solver:            {config.solver}\n"
+        f"  Dataset:           SWE-bench {config.dataset}\n"
         f"  Model:             {config.model}\n"
         f"  Problems:          {config.num_problems}\n"
         f"  Agents/problem:    {config.agents_per_problem}\n"
@@ -304,6 +305,7 @@ async def run_experiment(config: HarnessConfig, skip_eval: bool = False):
         num_problems=config.num_problems,
         repos=config.repos or None,
         task_file=config.task_file or None,
+        dataset=config.dataset,
     )
     logger.info(f"Tasks: {[t.instance_id for t in tasks]}")
 
@@ -403,6 +405,13 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help="Label for this experiment run (shown in Langfuse traces)",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default=None,
+        choices=["lite", "full"],
+        help="SWE-bench dataset to use: 'lite' (300 tasks) or 'full' (2294 tasks). Default: lite",
     )
     parser.add_argument(
         "--solver",
@@ -508,6 +517,7 @@ def main():
         print("DRY RUN -- Configuration:")
         print(f"  Experiment:        {config.experiment_name or '(unnamed)'}")
         print(f"  Solver:            {config.solver}")
+        print(f"  Dataset:           SWE-bench {config.dataset}")
         print(f"  Model:             {config.model}")
         print(f"  Problems:          {config.num_problems}")
         print(f"  Agents/problem:    {config.agents_per_problem}")

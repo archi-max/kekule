@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+{% block title %}{{ instance_id }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="/benchmarks">Benchmarks</a>
+    <span class="sep">/</span>
+    <a href="/benchmarks/{{ run_id }}">{{ run_id }}</a>
+    <span class="sep">/</span>
+    <span>{{ instance_id }}</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+    <h1 style="margin-bottom: 0;">{{ instance_id }}</h1>
+    {% if task.resolved %}
+        <span class="badge badge-pass" style="font-size: 14px; padding: 4px 12px;">RESOLVED</span>
+    {% else %}
+        <span class="badge badge-fail" style="font-size: 14px; padding: 4px 12px;">FAILED</span>
+    {% endif %}
+</div>
+
+<div class="meta" style="margin-bottom: 24px;">
+    <span>Patch: {% if task.patch_applied %}Applied{% elif task.patch_exists %}Exists (not applied){% else %}None{% endif %}</span>
+</div>
+
+<!-- Test Results -->
+<div class="card">
+    <h2>Test Results</h2>
+
+    {% set f2p = task.tests_status.get('FAIL_TO_PASS', {}) %}
+    {% set p2p = task.tests_status.get('PASS_TO_PASS', {}) %}
+    {% set f2f = task.tests_status.get('FAIL_TO_FAIL', {}) %}
+    {% set p2f = task.tests_status.get('PASS_TO_FAIL', {}) %}
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 12px;">
+        <!-- FAIL_TO_PASS -->
+        <div>
+            <h3 style="color: var(--yellow);">
+                FAIL_TO_PASS
+                <span class="meta" style="font-weight: normal;">(tests the fix must make pass)</span>
+            </h3>
+            {% set f2p_s = f2p.get('success', []) %}
+            {% set f2p_f = f2p.get('failure', []) %}
+            {% if f2p_s or f2p_f %}
+            <ul class="test-list" style="margin-top: 8px;">
+                {% for t in f2p_s %}
+                <li class="pass">{{ t }}</li>
+                {% endfor %}
+                {% for t in f2p_f %}
+                <li class="fail">{{ t }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <span class="meta">No tests in this category</span>
+            {% endif %}
+        </div>
+
+        <!-- PASS_TO_PASS -->
+        <div>
+            <h3 style="color: var(--text-muted);">
+                PASS_TO_PASS
+                <span class="meta" style="font-weight: normal;">(must not regress)</span>
+            </h3>
+            {% set p2p_s = p2p.get('success', []) %}
+            {% set p2p_f = p2p.get('failure', []) %}
+            <div class="meta" style="margin-top: 8px;">
+                <span style="color: var(--green);">{{ p2p_s|length }} passing</span>
+                {% if p2p_f|length > 0 %}
+                <span style="color: var(--red); margin-left: 8px;">{{ p2p_f|length }} REGRESSED</span>
+                {% endif %}
+            </div>
+            {% if p2p_f %}
+            <ul class="test-list" style="margin-top: 6px;">
+                {% for t in p2p_f %}
+                <li class="fail">{{ t }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% if p2p_s|length > 0 %}
+            <details style="margin-top: 6px;">
+                <summary class="meta" style="cursor: pointer;">Show all {{ p2p_s|length }} passing tests</summary>
+                <ul class="test-list" style="margin-top: 6px; max-height: 300px; overflow-y: auto;">
+                    {% for t in p2p_s %}
+                    <li class="pass">{{ t }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if f2f.get('success') or f2f.get('failure') or p2f.get('success') or p2f.get('failure') %}
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px;">
+        {% if f2f.get('success') or f2f.get('failure') %}
+        <div>
+            <h3 style="color: var(--text-muted);">FAIL_TO_FAIL</h3>
+            <span class="meta">{{ (f2f.get('success', [])|length) + (f2f.get('failure', [])|length) }} tests</span>
+        </div>
+        {% endif %}
+        {% if p2f.get('success') or p2f.get('failure') %}
+        <div>
+            <h3 style="color: var(--red);">PASS_TO_FAIL (regressions introduced)</h3>
+            <ul class="test-list" style="margin-top: 6px;">
+                {% for t in p2f.get('success', []) %}
+                <li class="fail">{{ t }}</li>
+                {% endfor %}
+                {% for t in p2f.get('failure', []) %}
+                <li class="fail">{{ t }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Fault Analysis -->
+{% if fault_analysis %}
+<div class="card">
+    <h2>Fault Analysis <span class="meta" style="font-weight: normal;">({{ fault_analysis.epoch }})</span></h2>
+    {% if fault_analysis.train_score is not none %}
+    <div class="meta" style="margin-bottom: 12px;">
+        <span>Train score: <strong style="color: var(--text);">{{ "%.0f"|format(fault_analysis.train_score * 100) }}%</strong></span>
+        {% if fault_analysis.test_score is not none %}
+        <span>Test score: <strong style="color: var(--text);">{{ "%.0f"|format(fault_analysis.test_score * 100) }}%</strong></span>
+        {% endif %}
+    </div>
+    {% endif %}
+    <div class="summary-box" style="white-space: pre-wrap; font-size: 13px; line-height: 1.6;">{{ fault_analysis.analysis }}</div>
+    {% if fault_analysis.lessons %}
+    <details style="margin-top: 12px;">
+        <summary class="meta" style="cursor: pointer;">Lessons learned</summary>
+        <div class="summary-box" style="margin-top: 8px; white-space: pre-wrap; font-size: 13px; line-height: 1.6;">{{ fault_analysis.lessons }}</div>
+    </details>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- AI Summary -->
+{% if not task.resolved %}
+<div class="card">
+    <h2>AI Failure Summary</h2>
+    {% if ai_summary %}
+    <div class="summary-box">{{ ai_summary|replace('\n', '<br>')|safe }}</div>
+    {% else %}
+    <button class="btn" onclick="generateSummary(this)">Generate AI Summary</button>
+    <div id="summary-container" style="margin-top: 8px;"></div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Swarm Roles & Communication -->
+{% if swarm_roles %}
+<div class="card">
+    <h2>Swarm Agents</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
+        {% for entry in swarm_roles %}
+        <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--blue); font-weight: 600; font-size: 12px;">{{ entry.agent }}</span>
+            <span style="color: var(--text); font-size: 13px;">{{ entry.role }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if swarm_broadcast %}
+<div class="card">
+    <h2>Swarm Communication</h2>
+    <div class="meta" style="margin-bottom: 8px;">Agent-to-agent broadcast messages from the swarm ledger</div>
+    <details>
+        <summary class="btn" style="cursor: pointer; list-style: none;">Show Swarm Chat</summary>
+        <div class="chat-log" style="margin-top: 12px;">
+            {% for line in swarm_broadcast.splitlines() %}
+                {% if line.strip() %}
+                    {% if line.strip().startswith('[status]') %}
+                    <div class="chat-msg" style="background: #1a2332; border-left: 3px solid var(--blue); padding: 6px 12px; margin-bottom: 4px; font-size: 13px;">
+                        <span style="color: var(--blue); font-weight: 600; font-size: 11px;">STATUS</span>
+                        <span style="margin-left: 6px;">{{ line.strip()[8:] }}</span>
+                    </div>
+                    {% elif line.strip().startswith('[coordination]') %}
+                    <div class="chat-msg" style="background: #1e2a1e; border-left: 3px solid var(--green); padding: 6px 12px; margin-bottom: 4px; font-size: 13px;">
+                        <span style="color: var(--green); font-weight: 600; font-size: 11px;">COORD</span>
+                        <span style="margin-left: 6px;">{{ line.strip()[14:] }}</span>
+                    </div>
+                    {% elif line.strip().startswith('[file_activity]') %}
+                    <div class="chat-msg" style="background: #1a1e2a; border-left: 3px solid var(--purple); padding: 6px 12px; margin-bottom: 4px; font-size: 13px;">
+                        <span style="color: var(--purple); font-weight: 600; font-size: 11px;">FILE</span>
+                        <span style="margin-left: 6px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px;">{{ line.strip()[15:] }}</span>
+                    </div>
+                    {% elif line.strip().startswith('[finding]') or line.strip().startswith('[broadcast]') %}
+                    <div class="chat-msg" style="background: #2a2518; border-left: 3px solid var(--yellow); padding: 6px 12px; margin-bottom: 4px; font-size: 13px;">
+                        <span style="color: var(--yellow); font-weight: 600; font-size: 11px;">FINDING</span>
+                        <span style="margin-left: 6px;">{{ line.strip().split('] ', 1)[-1] }}</span>
+                    </div>
+                    {% else %}
+                    <div class="chat-msg" style="background: var(--bg-card); border-left: 3px solid var(--border); padding: 6px 12px; margin-bottom: 4px; font-size: 13px;">
+                        {{ line.strip() }}
+                    </div>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </details>
+</div>
+{% endif %}
+
+<!-- Per-Agent Findings -->
+{% if agent_findings %}
+<div class="card">
+    <h2>Agent Findings</h2>
+    <div class="meta" style="margin-bottom: 12px;">Detailed findings written by each agent during the task</div>
+    {% for af in agent_findings %}
+    <div style="margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <span style="color: var(--blue); font-weight: 600; font-size: 13px;">{{ af.agent }}</span>
+            {% if af.role %}
+            <span style="background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 8px; font-size: 12px; color: var(--text-muted);">{{ af.role }}</span>
+            {% endif %}
+            {% if af.status %}
+            <span style="font-size: 12px; color: var(--yellow);">{{ af.status }}</span>
+            {% endif %}
+        </div>
+        {% if af.findings %}
+        <details{% if loop.first %} open{% endif %}>
+            <summary class="btn" style="cursor: pointer; list-style: none; font-size: 12px;">Show findings</summary>
+            <div class="summary-box" style="margin-top: 6px; white-space: pre-wrap; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto;">{{ af.findings }}</div>
+        </details>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Agent Chat Logs -->
+{% if agent_logs %}
+<div class="card">
+    <h2>Agent Chat Logs</h2>
+    <div class="meta" style="margin-bottom: 12px;">{{ agent_logs|length }} messages</div>
+    <details>
+        <summary class="btn" style="cursor: pointer; list-style: none;">Show Raw Agent Chat</summary>
+        <div class="chat-log" style="margin-top: 12px;">
+            {% for msg in agent_logs %}
+                {% if msg.type == 'assistant' %}
+                    <div class="chat-msg assistant">
+                        {% for block in msg.get('content', []) %}
+                            {% if block.type == 'text' and block.text %}
+                                <div style="white-space: pre-wrap;">{{ block.text[:2000] }}{% if block.text|length > 2000 %}...{% endif %}</div>
+                            {% elif block.type == 'tool_use' %}
+                                <div class="tool-name" style="margin-top: 6px;">Tool: {{ block.name }}</div>
+                                {% if block.input %}
+                                <details>
+                                    <summary class="meta" style="cursor: pointer; font-size: 11px;">Show input</summary>
+                                    <pre>{{ block.input|tojson(indent=2) if block.input is mapping else block.input }}</pre>
+                                </details>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% elif msg.type == 'tool_result' %}
+                    <div class="chat-msg tool-result">
+                        <span class="tool-name">Result{% if msg.is_error %} (ERROR){% endif %}</span>
+                        <pre>{{ msg.get('content', '')[:3000] }}{% if msg.get('content', '')|length > 3000 %}...{% endif %}</pre>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </details>
+</div>
+{% endif %}
+
+<!-- Raw Test Output -->
+{% if test_output %}
+<div class="card">
+    <h2>Raw Test Output</h2>
+    <details>
+        <summary class="meta" style="cursor: pointer;">Show raw output ({{ test_output|length }} chars)</summary>
+        <pre style="margin-top: 8px; max-height: 500px; overflow-y: auto; font-size: 12px; padding: 12px; background: var(--bg); border-radius: 6px;">{{ test_output[-10000:] }}</pre>
+    </details>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function generateSummary(btn) {
+    const container = document.getElementById('summary-container');
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    container.innerHTML = '<span class="loading">Generating AI summary...</span>';
+
+    fetch('/api/benchmarks/{{ run_id }}/{{ instance_id }}/summary', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.summary) {
+                container.innerHTML = '<div class="summary-box">' + data.summary.replace(/\n/g, '<br>') + '</div>';
+                btn.style.display = 'none';
+            } else if (data.error) {
+                container.innerHTML = '<div class="summary-box" style="border-color: var(--red);">' + data.error + '</div>';
+                btn.disabled = false;
+                btn.textContent = 'Retry AI Summary';
+            }
+        })
+        .catch(err => {
+            container.innerHTML = '<div class="summary-box" style="border-color: var(--red);">Error: ' + err.message + '</div>';
+            btn.disabled = false;
+            btn.textContent = 'Retry AI Summary';
+        });
+}
+</script>
+{% endblock %}

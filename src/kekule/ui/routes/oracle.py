@@ -12,11 +12,6 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request
 
-from kekule.oracle.agent import generate_all_oracles
-from kekule.oracle.elicitor import elicit_rules
-from kekule.oracle.runner import run_oracles
-from kekule.oracle.schemas import OracleRunRequest
-
 from ..models import (
     CreateOverrideRequest,
     ElicitRulesRequest,
@@ -75,6 +70,10 @@ async def run_oracle_battery(
             raise HTTPException(status_code=400, detail=f"Rule {rid} not found")
         oracle_rules.append(rule.to_oracle_rule())
 
+    from kekule.oracle.agent import generate_all_oracles
+    from kekule.oracle.runner import run_oracles
+    from kekule.oracle.schemas import OracleRunRequest as OracleRunReq
+
     # Step 1: Generate oracle artifacts
     logger.info(
         f"Generating oracle artifacts for waypoint {waypoint_id} "
@@ -101,7 +100,7 @@ async def run_oracle_battery(
 
     # Step 2: Run oracles in Docker
     logger.info(f"Running {len(artifact_paths)} oracles in Docker...")
-    run_request = OracleRunRequest(
+    run_request = OracleRunReq(
         repo_path=body.repo_path,
         git_commit=body.git_commit,
         rules=oracle_rules,
@@ -155,6 +154,8 @@ async def elicit_rules_endpoint(body: ElicitRulesRequest, request: Request):
         f"Eliciting rules for project {body.project_id} "
         f"from {body.repo_path}..."
     )
+
+    from kekule.oracle.elicitor import elicit_rules
 
     try:
         oracle_rules = await elicit_rules(
